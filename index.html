@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GenWave Radio</title>
     
+    <!-- Oficiální Discord Embedded App SDK -->
     <script src="https://discord.com/api/embed/sdk.js"></script>
 
     <style>
@@ -63,7 +64,11 @@
             font-weight: 800;
             letter-spacing: 6px;
             color: #d4f8ff;
-            text-shadow: 0 0 10px rgba(0, 244, 255, 0.8);
+            text-shadow: 0 0 10px rgba(0, 244, 255, 0.8),
+                         0 0 20px rgba(0, 244, 255, 0.5),
+                         0 0 35px rgba(0, 244, 255, 0.3);
+            line-height: 1.15;
+            margin-left: 6px;
         }
 
         .brand-radio {
@@ -72,18 +77,23 @@
             font-weight: 800;
             letter-spacing: 9px;
             color: #ffbbf0;
-            text-shadow: 0 0 10px rgba(255, 0, 160, 0.9);
+            text-shadow: 0 0 10px rgba(255, 0, 160, 0.9),
+                         0 0 22px rgba(255, 0, 160, 0.6),
+                         0 0 40px rgba(255, 0, 160, 0.4);
+            line-height: 1.15;
+            margin-left: 9px;
         }
 
         .circle-display-wrap {
             position: relative;
-            width: 220px;
-            height: 220px;
+            width: 250px;
+            height: 250px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 0 30px rgba(255, 0, 160, 0.4);
+            box-shadow: 0 0 30px rgba(255, 0, 160, 0.4),
+                        0 0 65px rgba(140, 0, 255, 0.25);
         }
 
         .ring-magenta {
@@ -91,7 +101,7 @@
             inset: -9px;
             border-radius: 50%;
             border: 2px solid #ff00a0;
-            box-shadow: 0 0 16px #ff00a0;
+            box-shadow: 0 0 16px #ff00a0, inset 0 0 16px rgba(255, 0, 160, 0.4);
         }
 
         .ring-cyan {
@@ -143,197 +153,23 @@
         }
 
         .current-track-name {
-            font-size: 18px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 20px;
             color: #ffffff;
             text-align: center;
+            letter-spacing: 0.5px;
+            min-height: 26px;
             max-width: 92%;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
         }
 
         .sub-station-name {
             font-family: 'Orbitron', sans-serif;
             font-size: 12px;
+            font-weight: 700;
             color: #00f4ff;
             letter-spacing: 3px;
-        }
-
-        /* Styl pro nativní fallback přehrávač v Discordu */
-        .fallback-audio-box {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            background: rgba(0, 244, 255, 0.05);
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid rgba(0, 244, 255, 0.3);
-        }
-
-        .fallback-audio-box audio {
-            width: 100%;
-            height: 36px;
-        }
-
-        .fallback-label {
-            font-size: 11px;
-            color: #00f4ff;
-            letter-spacing: 1px;
-        }
-
-        .play-area-3d {
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 80px;
-        }
-
-        .btn-play-3d {
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 35% 28%, #ffffff 0%, #76dcf5 70%, #129cc2 100%);
-            border: 2px solid rgba(255, 255, 255, 0.95);
-            box-shadow: 0 0 20px rgba(0, 244, 255, 0.9);
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .icon-symbol {
-            width: 24px;
-            height: 24px;
-            fill: #063647;
-        }
-
-        .bottom-status-bar {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: #838a9c;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="player-container">
-        <div class="brand-header">
-            <div class="brand-genwave">GENWAVE</div>
-            <div class="brand-radio">RADIO</div>
-        </div>
-
-        <div class="circle-display-wrap">
-            <div class="ring-magenta"></div>
-            <div class="ring-cyan"></div>
-            <div class="circle-inner-content">
-                <img src="lg.jpg" class="default-logo-img" alt="GenWave Logo">
-                <img id="albumCover" class="cover-art-image" src="" alt="Album Cover">
-            </div>
-        </div>
-
-        <div class="track-info-container">
-            <div class="current-track-name" id="trackName">GenWave Radio</div>
-            <div class="sub-station-name">GENWAVE RADIO</div>
-        </div>
-
-        <!-- ZÁLOŽNÍ NATIVNÍ AUDIO PŘEHRÁVAČ PRO DISCORD -->
-        <div class="fallback-audio-box">
-            <div class="fallback-label">DISCORD AUDIO FIX (Zkus spustit zde):</div>
-            <audio id="nativeAudio" controls preload="none" src="https://genwave-radio.com/listen/genwave/radio.mp3"></audio>
-        </div>
-
-        <div class="play-area-3d">
-            <button class="btn-play-3d" id="playPauseBtn">
-                <svg id="iconPlay" class="icon-symbol" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="iconPause" class="icon-symbol" viewBox="0 0 24 24" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            </button>
-        </div>
-
-        <div class="bottom-status-bar">
-            <span>LIVE</span>
-            <span id="bitrateVal">192 KBPS</span>
-        </div>
-    </div>
-
-    <script>
-        let discordSdk = null;
-        async function initDiscord() {
-            if (typeof DiscordSDK !== 'undefined') {
-                try {
-                    discordSdk = new DiscordSDK({ clientId: "1556777391337115678" });
-                    await discordSdk.ready();
-                } catch (e) {}
-            }
-        }
-        initDiscord();
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const streamUrl = 'https://genwave-radio.com/listen/genwave/radio.mp3';
-            const apiUrl = 'https://genwave-radio.com/api/nowplaying/genwave';
-
-            const nativeAudio = document.getElementById('nativeAudio');
-            const playPauseBtn = document.getElementById('playPauseBtn');
-            const iconPlay = document.getElementById('iconPlay');
-            const iconPause = document.getElementById('iconPause');
-            const albumCover = document.getElementById('albumCover');
-            const trackName = document.getElementById('trackName');
-            const bitrateVal = document.getElementById('bitrateVal');
-
-            let isPlaying = false;
-            let currentArt = null;
-
-            async function updateMetadata() {
-                try {
-                    const res = await fetch(apiUrl);
-                    const data = await res.json();
-                    if (data.now_playing?.song?.text) {
-                        trackName.innerText = data.now_playing.song.text;
-                        if (data.now_playing.song.art) {
-                            currentArt = data.now_playing.song.art;
-                            if (isPlaying) {
-                                albumCover.src = currentArt;
-                                albumCover.style.display = 'block';
-                            }
-                        }
-                    }
-                    if (data.station?.mounts?.[0]?.bitrate) {
-                        bitrateVal.innerText = data.station.mounts[0].bitrate + ' KBPS';
-                    }
-                } catch (e) {}
-            }
-
-            playPauseBtn.addEventListener('click', async () => {
-                if (isPlaying) {
-                    nativeAudio.pause();
-                    isPlaying = false;
-                    iconPlay.style.display = 'block';
-                    iconPause.style.display = 'none';
-                    albumCover.style.display = 'none';
-                } else {
-                    try {
-                        await nativeAudio.play();
-                        isPlaying = true;
-                        iconPlay.style.display = 'none';
-                        iconPause.style.display = 'block';
-                        if (currentArt) {
-                            albumCover.src = currentArt;
-                            albumCover.style.display = 'block';
-                        }
-                    } catch (err) {
-                        alert("Spusť rádio kliknutím na play v modrém obdélníku nahoře!");
-                    }
-                }
-            });
-
-            updateMetadata();
-            setInterval(updateMetadata, 10000);
-        });
-    </script>
-</body>
-</html>
+            text-shadow: 0 0 8px rgba(0, 244, 255, 
