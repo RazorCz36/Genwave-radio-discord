@@ -411,7 +411,7 @@
                         clientId: "1556777391337115678"
                     });
                     await discordSdk.ready();
-                    console.log("Discord SDK je připraveno!");
+                    console.log("Discord SDK je připraveno v kontextu aktivity!");
                 } catch (error) {
                     console.log("Chyba při inicializaci Discord SDK:", error);
                 }
@@ -426,6 +426,7 @@
             const audio = new Audio();
             audio.volume = 0.8;
             audio.crossOrigin = "anonymous"; 
+            audio.preload = "auto";
 
             const playPauseBtn = document.getElementById('playPauseBtn');
             const iconPlay = document.getElementById('iconPlay');
@@ -476,7 +477,8 @@
                     albumCover.style.display = 'none';
                 } else {
                     try {
-                        audio.src = streamUrl + '?nocache=' + new Date().getTime();
+                        audio.src = streamUrl + '?cb=' + Date.now();
+                        await audio.load();
                         await audio.play();
                         isPlaying = true;
 
@@ -488,8 +490,8 @@
                             albumCover.style.display = 'block';
                         }
                     } catch (err) {
-                        console.error("Chyba při přehrávání audio streamu:", err);
-                        alert("Přehrávač nemohl spustit stream. Zkontroluj připojení nebo CORS politiku serveru.");
+                        console.error("Chyba přehrávání v Discord aktivitě:", err);
+                        alert("Chyba přehrávání: " + err.message);
                     }
                 }
             });
