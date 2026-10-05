@@ -419,20 +419,35 @@
     </div>
 
     <script>
-        // Inicializace Discord SDK (dle rady kamaráda)
-        if (typeof DiscordSdk !== 'undefined') {
-            const discordSdk = new DiscordSdk({
-                clientId: "1556777391337115678" // Zde si případně doplníš své Client ID z Discord Developer Portálu
-            });
-            discordSdk.ready().catch(() => {});
+        /    <script>
+        // Opravená asynchronní inicializace Discord SDK
+        let discordSdk = null;
+
+        async function initDiscord() {
+            if (typeof DiscordSDK !== 'undefined') {
+                try {
+                    discordSdk = new DiscordSDK({
+                        clientId: "1556777391337115678"
+                    });
+                    await discordSdk.ready();
+                    console.log("Discord SDK je připraveno!");
+                } catch (error) {
+                    console.log("Chyba při inicializaci Discord SDK:", error);
+                }
+            }
         }
+        initDiscord();
 
         document.addEventListener("DOMContentLoaded", () => {
+            // POZOR: Ujisti se, že tento stream link funguje přímo v prohlížeči. 
+            // Pokud rádio nepoužívá HTTPS, prohlížeč v Discordu ho zablokuje!
             const streamUrl = 'https://genwave-radio.com/listen/genwave/radio.mp3';
             const apiUrl = 'https://genwave-radio.com/api/nowplaying/genwave';
 
             const audio = new Audio();
             audio.volume = 0.8;
+            // Důležité pro mobilní zařízení a Discord iframe
+            audio.crossOrigin = "anonymous"; 
 
             const playPauseBtn = document.getElementById('playPauseBtn');
             const iconPlay = document.getElementById('iconPlay');
@@ -472,7 +487,7 @@
                 }
             }
 
-            playPauseBtn.addEventListener('click', () => {
+            playPauseBtn.addEventListener('click', async () => {
                 if (isPlaying) {
                     audio.pause();
                     audio.src = '';
@@ -482,18 +497,36 @@
                     iconPause.style.display = 'none';
                     albumCover.style.display = 'none';
                 } else {
-                    audio.src = streamUrl + '?nocache=' + new Date().getTime();
-                    audio.play();
-                    isPlaying = true;
+                    try {
+                        audio.src = streamUrl + '?nocache=' + new Date().getTime();
+                        await audio.play();
+                        isPlaying = true;
 
-                    iconPlay.style.display = 'none';
-                    iconPause.style.display = 'block';
+                        iconPlay.style.display = 'none';
+                        iconPause.style.display = 'block';
 
-                    if (currentArt) {
-                        albumCover.src = currentArt;
-                        albumCover.style.display = 'block';
+                        if (currentArt) {
+                            albumCover.src = currentArt;
+                            albumCover.style.display = 'block';
+                        }
+                    } catch (err) {
+                        console.error("Chyba při přehrávání audio streamu:", err);
+                        alert("Přehrávač nemohl spustit stream. Zkontroluj připojení nebo CORS politiku serveru.");
                     }
                 }
+            });
+
+            volRange.addEventListener('input', (e) => {
+                const val = e.target.value;
+                audio.volume = val;
+                volRing.style.left = (val * 100) + '%';
+            });
+
+            updateMetadata();
+            setInterval(updateMetadata, 10000);
+        });
+    </script>
+
             });
 
             volRange.addEventListener('input', (e) => {
