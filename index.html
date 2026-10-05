@@ -411,7 +411,7 @@
                         clientId: "1556777391337115678"
                     });
                     await discordSdk.ready();
-                    console.log("Discord SDK je připraveno v kontextu aktivity!");
+                    console.log("Discord SDK je připraveno!");
                 } catch (error) {
                     console.log("Chyba při inicializaci Discord SDK:", error);
                 }
@@ -477,8 +477,8 @@
                     albumCover.style.display = 'none';
                 } else {
                     try {
-                        audio.src = streamUrl + '?cb=' + Date.now();
-                        await audio.load();
+                        // Přidání kusu kódu pro vynucení bezpečného načtení v iframe
+                        audio.src = streamUrl;
                         await audio.play();
                         isPlaying = true;
 
@@ -490,8 +490,8 @@
                             albumCover.style.display = 'block';
                         }
                     } catch (err) {
-                        console.error("Chyba přehrávání v Discord aktivitě:", err);
-                        alert("Chyba přehrávání: " + err.message);
+                        console.error("Chyba přehrávání:", err);
+                        alert("Discord blokuje přehrávání audio streamu (CORS/HTTPS). Zkus otevřít konzoli na PC.");
                     }
                 }
             });
