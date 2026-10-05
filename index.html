@@ -50,7 +50,6 @@
             padding: 22px 20px 18px 20px;
         }
 
-        /* Horní nápis GENWAVE RADIO podle referenčního obrázku */
         .brand-header {
             text-align: center;
             margin-top: 5px;
@@ -85,7 +84,6 @@
             margin-left: 9px;
         }
 
-        /* Středový kruh */
         .circle-display-wrap {
             position: relative;
             width: 250px;
@@ -126,7 +124,6 @@
             align-items: center;
         }
 
-        /* Výchozí logo lg.jpg uvnitř kruhu (zmenšené pomocí contain, aby nebylo příliš velké) */
         .default-logo-img {
             position: absolute;
             width: 100%;
@@ -137,7 +134,6 @@
             padding: 15px;
         }
 
-        /* Živá fotka alba/interpreta ze streamu */
         .cover-art-image {
             position: absolute;
             width: 100%;
@@ -148,7 +144,6 @@
             z-index: 3;
         }
 
-        /* Název skladby a podnápis */
         .track-info-container {
             width: 100%;
             display: flex;
@@ -180,7 +175,6 @@
             text-shadow: 0 0 8px rgba(0, 244, 255, 0.8);
         }
 
-        /* Posuvník hlasitosti s tečkami */
         .volume-control-wrap {
             width: 88%;
             display: flex;
@@ -231,7 +225,6 @@
             transition: left 0.05s ease-out;
         }
 
-        /* 3D Vodní hladina a Play tlačítko */
         .play-area-3d {
             position: relative;
             width: 100%;
@@ -312,7 +305,6 @@
             filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.8));
         }
 
-        /* Spodní lišta */
         .bottom-status-bar {
             width: 100%;
             display: flex;
@@ -357,34 +349,160 @@
 <body>
 
     <div class="player-container">
-        <!-- Horní nápis GENWAVE RADIO -->
         <div class="brand-header">
             <div class="brand-genwave">GENWAVE</div>
             <div class="brand-radio">RADIO</div>
         </div>
 
-        <!-- Středový neónový kruh -->
         <div class="circle-display-wrap">
             <div class="ring-magenta"></div>
             <div class="ring-cyan"></div>
             
             <div class="circle-inner-content">
-                <!-- Výchozí logo lg.jpg uvnitř kruhu (zmenšené) -->
                 <img src="lg.jpg" class="default-logo-img" alt="GenWave Logo">
-
-                <!-- Živá fotka alba/interpreta ze streamu -->
                 <img id="albumCover" class="cover-art-image" src="" alt="Album Cover">
             </div>
         </div>
 
-        <!-- Název písničky a podnápis -->
         <div class="track-info-container">
             <div class="current-track-name" id="trackName">GenWave Radio</div>
             <div class="sub-station-name">GENWAVE RADIO</div>
         </div>
 
-        <!-- Tečkovaná lišta s kroužkovým jezdcem -->
         <div class="volume-control-wrap">
             <div class="dotted-slider-bar">
                 <div class="dots-background-line"></div>
-                <div class="volume-ring-handle" id="volRing" style
+                <div class="volume-ring-handle" id="volRing" style="left: 80%;"></div>
+                <input type="range" class="volume-native-range" id="volRange" min="0" max="1" step="0.01" value="0.8">
+            </div>
+        </div>
+
+        <div class="play-area-3d">
+            <div class="water-surface-glow"></div>
+            <div class="water-wave-1"></div>
+            <div class="water-wave-2"></div>
+            
+            <button class="btn-play-3d" id="playPauseBtn">
+                <svg id="iconPlay" class="icon-symbol" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg id="iconPause" class="icon-symbol" viewBox="0 0 24 24" style="display: none;">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="bottom-status-bar">
+            <div class="live-tag">
+                <div class="red-dot-pulsing"></div>
+                <span>LIVE</span>
+            </div>
+            <div class="bitrate-tag" id="bitrateVal">192 KBPS</div>
+        </div>
+    </div>
+
+    <script>
+        let discordSdk = null;
+
+        async function initDiscord() {
+            if (typeof DiscordSDK !== 'undefined') {
+                try {
+                    discordSdk = new DiscordSDK({
+                        clientId: "1556777391337115678"
+                    });
+                    await discordSdk.ready();
+                    console.log("Discord SDK je připraveno!");
+                } catch (error) {
+                    console.log("Chyba při inicializaci Discord SDK:", error);
+                }
+            }
+        }
+        initDiscord();
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const streamUrl = 'https://genwave-radio.com/listen/genwave/radio.mp3';
+            const apiUrl = 'https://genwave-radio.com/api/nowplaying/genwave';
+
+            const audio = new Audio();
+            audio.volume = 0.8;
+            audio.crossOrigin = "anonymous"; 
+
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const iconPlay = document.getElementById('iconPlay');
+            const iconPause = document.getElementById('iconPause');
+            const albumCover = document.getElementById('albumCover');
+            const trackName = document.getElementById('trackName');
+            const volRange = document.getElementById('volRange');
+            const volRing = document.getElementById('volRing');
+            const bitrateVal = document.getElementById('bitrateVal');
+
+            let isPlaying = false;
+            let currentArt = null;
+
+            async function updateMetadata() {
+                try {
+                    const res = await fetch(apiUrl);
+                    const data = await res.json();
+
+                    if (data.now_playing && data.now_playing.song) {
+                        trackName.innerText = data.now_playing.song.text;
+
+                        if (data.now_playing.song.art) {
+                            currentArt = data.now_playing.song.art;
+                            if (isPlaying) {
+                                albumCover.src = currentArt;
+                                albumCover.style.display = 'block';
+                            }
+                        }
+                    }
+
+                    if (data.station && data.station.mounts && data.station.mounts.length > 0) {
+                        const br = data.station.mounts[0].bitrate;
+                        if (br) bitrateVal.innerText = br + ' KBPS';
+                    }
+                } catch (e) {
+                    // Tiché selhání při offline stavu
+                }
+            }
+
+            playPauseBtn.addEventListener('click', async () => {
+                if (isPlaying) {
+                    audio.pause();
+                    audio.src = '';
+                    isPlaying = false;
+
+                    iconPlay.style.display = 'block';
+                    iconPause.style.display = 'none';
+                    albumCover.style.display = 'none';
+                } else {
+                    try {
+                        audio.src = streamUrl + '?nocache=' + new Date().getTime();
+                        await audio.play();
+                        isPlaying = true;
+
+                        iconPlay.style.display = 'none';
+                        iconPause.style.display = 'block';
+
+                        if (currentArt) {
+                            albumCover.src = currentArt;
+                            albumCover.style.display = 'block';
+                        }
+                    } catch (err) {
+                        console.error("Chyba při přehrávání audio streamu:", err);
+                        alert("Přehrávač nemohl spustit stream. Zkontroluj připojení nebo CORS politiku serveru.");
+                    }
+                }
+            });
+
+            volRange.addEventListener('input', (e) => {
+                const val = e.target.value;
+                audio.volume = val;
+                volRing.style.left = (val * 100) + '%';
+            });
+
+            updateMetadata();
+            setInterval(updateMetadata, 10000);
+        });
+    </script>
+</body>
+</html>
