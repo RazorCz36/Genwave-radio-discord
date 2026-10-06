@@ -2,62 +2,72 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
 <title>GenWave Radio</title>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700;800&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap');
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none;
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Syncopate:wght@700;800&display=swap');
+
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    user-select:none;
+    -webkit-user-select:none;
 }
 
-html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #03000a;
-    color: white;
+html,
+body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#03000a;
 }
 
-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Share Tech Mono', monospace;
+body{
+    color:white;
+    font-family:'Share Tech Mono',monospace;
+
     background:
-        #03000a url("bg.jpg")
-        center center / cover no-repeat;
+        #03000a
+        url("bg.jpg")
+        center center
+        / cover
+        no-repeat;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
 }
 
-.player {
-    width: 100%;
-    max-width: 390px;
-    height: 100vh;
-    min-height: 500px;
-    padding: 22px 20px 18px;
+.player{
+    width:100%;
+    max-width:390px;
+    height:100vh;
 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
+    padding:22px 20px 18px;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    align-items:center;
 }
 
 /* HEADER */
 
-.header {
-    text-align: center;
+.header{
+    text-align:center;
 }
 
-.genwave {
-    font-family: 'Syncopate', sans-serif;
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: 6px;
-    color: #d4f8ff;
+.genwave{
+    font-family:'Syncopate',sans-serif;
+    font-size:28px;
+    font-weight:800;
+    letter-spacing:6px;
+
+    color:#d4f8ff;
 
     text-shadow:
         0 0 10px #00f4ff,
@@ -65,12 +75,13 @@ body {
         0 0 40px #00f4ff;
 }
 
-.radio {
-    font-family: 'Syncopate', sans-serif;
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: 9px;
-    color: #ffbbf0;
+.radio{
+    font-family:'Syncopate',sans-serif;
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:9px;
+
+    color:#ffbbf0;
 
     text-shadow:
         0 0 10px #ff00a0,
@@ -80,107 +91,135 @@ body {
 
 /* COVER */
 
-.cover {
-    position: relative;
-    width: 250px;
-    height: 250px;
-    border-radius: 50%;
+.cover{
+    position:relative;
+
+    width:250px;
+    height:250px;
+
+    border-radius:50%;
 
     box-shadow:
         0 0 30px rgba(255,0,160,.5),
         0 0 70px rgba(140,0,255,.3);
 }
 
-.ring-pink {
-    position: absolute;
-    inset: -9px;
-    border-radius: 50%;
-    border: 2px solid #ff00a0;
-    box-shadow: 0 0 18px #ff00a0;
+.ring-pink{
+    position:absolute;
+    inset:-9px;
+
+    border-radius:50%;
+
+    border:2px solid #ff00a0;
+
+    box-shadow:
+        0 0 18px #ff00a0;
 }
 
-.ring-cyan {
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    border: 2px solid #00f4ff;
-    box-shadow: 0 0 12px #00f4ff;
+.ring-cyan{
+    position:absolute;
+    inset:-3px;
+
+    border-radius:50%;
+
+    border:2px solid #00f4ff;
+
+    box-shadow:
+        0 0 12px #00f4ff;
 }
 
-.cover-inner {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    border-radius: 50%;
-    background: #03000a;
+.cover-inner{
+    position:absolute;
+    inset:0;
+
+    overflow:hidden;
+
+    border-radius:50%;
+
+    background:#03000a;
 }
 
-.logo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    padding: 15px;
+.logo{
+    width:100%;
+    height:100%;
+
+    object-fit:contain;
+
+    padding:15px;
 }
 
-#coverArt {
-    display: none;
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+#album{
+    display:none;
+
+    position:absolute;
+    inset:0;
+
+    width:100%;
+    height:100%;
+
+    object-fit:cover;
 }
 
 /* TRACK */
 
-.track {
-    width: 100%;
-    text-align: center;
+.track{
+    width:100%;
+
+    text-align:center;
 }
 
-#trackName {
-    min-height: 27px;
-    max-width: 95%;
-    margin: auto;
+#track{
+    width:95%;
 
-    font-size: 20px;
-    color: white;
+    margin:auto;
 
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-height:27px;
 
-    text-shadow: 0 0 8px white;
+    font-size:20px;
+
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+
+    text-shadow:
+        0 0 8px white;
 }
 
-.station {
-    margin-top: 5px;
+.station{
+    margin-top:5px;
 
-    font-family: 'Orbitron', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 3px;
+    font-family:'Orbitron',sans-serif;
 
-    color: #00f4ff;
-    text-shadow: 0 0 8px #00f4ff;
+    font-size:12px;
+    font-weight:700;
+
+    letter-spacing:3px;
+
+    color:#00f4ff;
+
+    text-shadow:
+        0 0 8px #00f4ff;
 }
 
 /* VOLUME */
 
-.volume {
-    position: relative;
-    width: 88%;
-    height: 25px;
+.volume{
+    position:relative;
+
+    width:88%;
+    height:25px;
 }
 
-.volume-line {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    width: 100%;
-    height: 4px;
+.volume-line{
+    position:absolute;
 
-    transform: translateY(-50%);
+    top:50%;
+    left:0;
+
+    width:100%;
+    height:4px;
+
+    transform:translateY(-50%);
 
     background-image:
         radial-gradient(
@@ -189,75 +228,89 @@ body {
             transparent 2px
         );
 
-    background-size: 9px 4px;
+    background-size:9px 4px;
 }
 
-#volume {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    opacity: 0;
-    z-index: 5;
+#volume{
+    position:absolute;
+
+    inset:0;
+
+    width:100%;
+
+    opacity:0;
+
+    cursor:pointer;
+
+    z-index:5;
 }
 
-.volume-handle {
-    position: absolute;
-    top: 50%;
+.volume-handle{
+    position:absolute;
 
-    width: 15px;
-    height: 15px;
+    top:50%;
 
-    border-radius: 50%;
-    background: white;
-    border: 2px solid #00f4ff;
+    width:15px;
+    height:15px;
 
-    box-shadow: 0 0 12px #00f4ff;
+    border-radius:50%;
 
-    transform: translate(-50%, -50%);
-    pointer-events: none;
+    background:white;
+
+    border:2px solid #00f4ff;
+
+    box-shadow:
+        0 0 12px #00f4ff;
+
+    transform:
+        translate(-50%,-50%);
+
+    pointer-events:none;
 }
 
 /* PLAY */
 
-.play-area {
-    position: relative;
+.play-area{
+    position:relative;
 
-    width: 100%;
-    height: 120px;
+    width:100%;
+    height:120px;
 
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display:flex;
+    justify-content:center;
+    align-items:center;
 }
 
-.wave {
-    position: absolute;
+.wave{
+    position:absolute;
 
-    width: 210px;
-    height: 65px;
+    width:210px;
+    height:65px;
 
     border:
         1px solid
         rgba(0,244,255,.5);
 
-    border-radius: 50%;
+    border-radius:50%;
 
-    transform: rotateX(70deg);
+    transform:rotateX(70deg);
 
     box-shadow:
         0 0 15px
         rgba(0,244,255,.5);
 }
 
-#playButton {
-    position: relative;
-    z-index: 20;
+#play{
+    position:relative;
 
-    width: 82px;
-    height: 82px;
+    z-index:50;
 
-    border-radius: 50%;
-    border: 2px solid white;
+    width:82px;
+    height:82px;
+
+    border-radius:50%;
+
+    border:2px solid white;
 
     background:
         radial-gradient(
@@ -273,118 +326,135 @@ body {
         0 12px 20px rgba(0,0,0,.7),
         inset 0 -5px 10px rgba(0,130,180,.6);
 
-    cursor: pointer;
+    cursor:pointer;
 
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display:flex;
+    justify-content:center;
+    align-items:center;
 
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
+    touch-action:manipulation;
+
+    -webkit-tap-highlight-color:transparent;
 }
 
-#playButton:active {
-    transform: scale(.9);
+#play:active{
+    transform:scale(.90);
 }
 
-#playButton svg {
-    width: 30px;
-    height: 30px;
-    fill: #063647;
+#play svg{
+    width:30px;
+    height:30px;
+
+    fill:#063647;
 }
 
 /* STATUS */
 
-.status {
-    width: 100%;
+.status{
+    width:100%;
 
-    padding-top: 12px;
+    padding-top:12px;
 
     border-top:
         1px solid
         rgba(255,255,255,.12);
 
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
 
-    font-family: 'Orbitron', sans-serif;
-    font-size: 11px;
-    letter-spacing: 1.5px;
+    font-family:'Orbitron',sans-serif;
+
+    font-size:11px;
+
+    letter-spacing:1.5px;
 }
 
-.live {
-    display: flex;
-    align-items: center;
-    gap: 7px;
+.live{
+    display:flex;
+    align-items:center;
 
-    color: #ff0055;
+    gap:7px;
+
+    color:#ff0055;
 }
 
-.dot {
-    width: 8px;
-    height: 8px;
+.dot{
+    width:8px;
+    height:8px;
 
-    border-radius: 50%;
+    border-radius:50%;
 
-    background: #ff0055;
+    background:#ff0055;
 
     box-shadow:
         0 0 8px #ff0055;
 }
 
-#state {
-    color: #00f4ff;
+#status{
+    color:#00f4ff;
 }
 
-/* DEBUG */
+/* MESSAGE */
 
-#debug {
-    position: fixed;
+#message{
+    position:fixed;
 
-    left: 10px;
-    right: 10px;
-    bottom: 60px;
+    left:15px;
+    right:15px;
+    bottom:65px;
 
-    display: none;
+    z-index:999;
 
-    padding: 10px;
+    display:none;
+
+    padding:12px;
 
     border:
         1px solid
         rgba(0,244,255,.5);
 
-    border-radius: 8px;
+    border-radius:10px;
 
     background:
-        rgba(0,0,0,.95);
+        rgba(3,0,10,.96);
 
-    color: #00f4ff;
+    color:#bcecff;
 
-    font-size: 11px;
-    line-height: 1.4;
+    font-size:12px;
 
-    text-align: center;
+    line-height:1.5;
 
-    z-index: 9999;
+    text-align:center;
 
-    white-space: pre-line;
+    white-space:pre-line;
 }
+
 </style>
 </head>
+
 
 <body>
 
 <div class="player">
 
     <div class="header">
-        <div class="genwave">GENWAVE</div>
-        <div class="radio">RADIO</div>
+
+        <div class="genwave">
+            GENWAVE
+        </div>
+
+        <div class="radio">
+            RADIO
+        </div>
+
     </div>
+
 
     <div class="cover">
 
         <div class="ring-pink"></div>
+
         <div class="ring-cyan"></div>
 
         <div class="cover-inner">
@@ -396,17 +466,19 @@ body {
             >
 
             <img
-                id="coverArt"
+                id="album"
                 src=""
-                alt=""
+                alt="Album"
             >
 
         </div>
+
     </div>
+
 
     <div class="track">
 
-        <div id="trackName">
+        <div id="track">
             GenWave Radio
         </div>
 
@@ -415,6 +487,7 @@ body {
         </div>
 
     </div>
+
 
     <div class="volume">
 
@@ -437,13 +510,18 @@ body {
 
     </div>
 
+
     <div class="play-area">
 
         <div class="wave"></div>
 
+        <!-- IMPORTANT:
+             onclick is directly on the button -->
+
         <button
-            id="playButton"
+            id="play"
             type="button"
+            onclick="toggleRadio()"
         >
 
             <svg
@@ -457,14 +535,18 @@ body {
 
     </div>
 
+
     <div class="status">
 
         <div class="live">
+
             <span class="dot"></span>
+
             LIVE
+
         </div>
 
-        <div id="state">
+        <div id="status">
             READY
         </div>
 
@@ -472,7 +554,9 @@ body {
 
 </div>
 
-<div id="debug"></div>
+
+<div id="message"></div>
+
 
 <audio
     id="audio"
@@ -484,22 +568,35 @@ body {
 <script>
 
 /*
-    GENWAVE RADIO
-    Discord Activity version
+==================================================
+GENWAVE RADIO
+DISCORD ACTIVITY
+==================================================
 */
 
-const STREAM_URL =
+
+const STREAM =
     "/radio/listen/genwave/radio.mp3";
 
-const API_URL =
+const API =
     "/radio/api/nowplaying/genwave";
 
 
-const button =
-    document.getElementById("playButton");
+let playing =
+    false;
+
 
 const audio =
     document.getElementById("audio");
+
+const button =
+    document.getElementById("play");
+
+const status =
+    document.getElementById("status");
+
+const message =
+    document.getElementById("message");
 
 const volume =
     document.getElementById("volume");
@@ -507,141 +604,169 @@ const volume =
 const volumeHandle =
     document.getElementById("volumeHandle");
 
-const state =
-    document.getElementById("state");
+const track =
+    document.getElementById("track");
 
-const trackName =
-    document.getElementById("trackName");
-
-const coverArt =
-    document.getElementById("coverArt");
-
-const debug =
-    document.getElementById("debug");
+const album =
+    document.getElementById("album");
 
 
-let playing = false;
+/*
+==================================================
+MESSAGE
+==================================================
+*/
 
+function showMessage(text){
 
-/* -------------------------------- */
-/* DEBUG */
-/* -------------------------------- */
+    message.innerText =
+        text;
 
-function debugMessage(message) {
-
-    console.log(
-        "[GENWAVE]",
-        message
-    );
-
-    debug.textContent =
-        message;
+    message.style.display =
+        "block";
 
 }
 
 
-/* -------------------------------- */
-/* PLAY BUTTON */
-/* -------------------------------- */
+/*
+==================================================
+HIDE MESSAGE
+==================================================
+*/
 
-function handlePlayClick(event) {
+function hideMessage(){
 
-    event.preventDefault();
-    event.stopPropagation();
+    message.style.display =
+        "none";
 
-    /*
-       TOTO SE MUSÍ UKÁZAT OKAMŽITĚ.
-       Pokud se READY nezmění,
-       JavaScript se vůbec nespouští.
-    */
-
-    state.textContent =
-        "CLICKED";
-
-    debugMessage(
-        "PLAY BUTTON CLICKED"
-    );
-
-
-    if (playing) {
-
-        stopRadio();
-
-        return;
-    }
-
-
-    startRadio();
 }
 
 
-button.onclick =
-    handlePlayClick;
+/*
+==================================================
+STATUS
+==================================================
+*/
+
+function setStatus(text){
+
+    status.innerText =
+        text;
+
+}
 
 
-/* -------------------------------- */
-/* START */
-/* -------------------------------- */
+/*
+==================================================
+PLAY
+==================================================
+*/
 
-function startRadio() {
+function playRadio(){
 
-    state.textContent =
-        "CONNECTING";
+    hideMessage();
 
-    debugMessage(
-        "CLICKED\n\n" +
-        "Trying:\n" +
-        STREAM_URL
+    setStatus(
+        "CONNECTING..."
     );
 
 
     audio.volume =
-        Number(volume.value);
+        parseFloat(
+            volume.value
+        );
 
 
     audio.src =
-        STREAM_URL;
+        STREAM;
 
 
-    let result;
+    console.log(
+        "GENWAVE PLAY:",
+        STREAM
+    );
 
 
-    try {
+    try{
 
-        result =
+        const p =
             audio.play();
 
-    } catch (error) {
 
-        handleError(error);
+        if(p){
 
-        return;
-    }
+            p.then(
+                function(){
+
+                    playing =
+                        true;
+
+                    setStatus(
+                        "PLAYING"
+                    );
+
+                    console.log(
+                        "GENWAVE PLAYING"
+                    );
+
+                }
+            );
 
 
-    if (
-        result &&
-        typeof result.catch ===
-        "function"
-    ) {
+            p.catch(
+                function(error){
 
-        result.catch(
-            function(error) {
+                    playing =
+                        false;
 
-                handleError(error);
+                    setStatus(
+                        "ERROR"
+                    );
 
-            }
+                    showMessage(
+                        "PŘEHRÁVÁNÍ SELHALO\n\n" +
+                        error.name +
+                        "\n" +
+                        error.message
+                    );
+
+                    console.error(
+                        error
+                    );
+
+                }
+            );
+
+        }
+
+    }catch(error){
+
+        playing =
+            false;
+
+        setStatus(
+            "ERROR"
+        );
+
+        showMessage(
+            "PŘEHRÁVÁNÍ SELHALO\n\n" +
+            error.name +
+            "\n" +
+            error.message
         );
 
     }
+
 }
 
 
-/* -------------------------------- */
-/* STOP */
-/* -------------------------------- */
+/*
+==================================================
+STOP
+==================================================
+*/
 
-function stopRadio() {
+function stopRadio(){
 
     audio.pause();
 
@@ -651,183 +776,181 @@ function stopRadio() {
 
     audio.load();
 
-    playing = false;
+    playing =
+        false;
 
-    state.textContent =
-        "READY";
-
-    debugMessage(
-        "STOPPED"
+    setStatus(
+        "READY"
     );
+
 }
 
 
-/* -------------------------------- */
-/* PLAYING */
-/* -------------------------------- */
+/*
+==================================================
+TOGGLE
+==================================================
+*/
+
+function toggleRadio(){
+
+    /*
+       THIS LINE EXECUTES DIRECTLY
+       FROM THE BUTTON.
+    */
+
+    setStatus(
+        "CLICKED"
+    );
+
+
+    if(playing){
+
+        stopRadio();
+
+    }else{
+
+        playRadio();
+
+    }
+
+}
+
+
+/*
+==================================================
+AUDIO EVENTS
+==================================================
+*/
 
 audio.addEventListener(
     "playing",
-    function() {
+    function(){
 
-        playing = true;
+        playing =
+            true;
 
-        state.textContent =
-            "PLAYING";
-
-        debugMessage(
-            "STREAM PLAYING"
+        setStatus(
+            "PLAYING"
         );
 
     }
 );
 
-
-/* -------------------------------- */
-/* WAITING */
-/* -------------------------------- */
 
 audio.addEventListener(
     "waiting",
-    function() {
+    function(){
 
-        state.textContent =
-            "BUFFERING";
+        if(playing){
 
-        debugMessage(
-            "STREAM BUFFERING"
-        );
+            setStatus(
+                "BUFFERING..."
+            );
 
-    }
-);
-
-
-/* -------------------------------- */
-/* CANPLAY */
-/* -------------------------------- */
-
-audio.addEventListener(
-    "canplay",
-    function() {
-
-        debugMessage(
-            "STREAM CAN PLAY"
-        );
+        }
 
     }
 );
 
-
-/* -------------------------------- */
-/* ERROR */
-/* -------------------------------- */
 
 audio.addEventListener(
     "error",
-    function() {
+    function(){
+
+        playing =
+            false;
+
+        setStatus(
+            "ERROR"
+        );
+
 
         let text =
-            "AUDIO ERROR";
+            "STREAM ERROR";
 
-        if (audio.error) {
+
+        if(audio.error){
 
             text +=
-                "\nCODE: " +
+                "\n\nCODE: " +
                 audio.error.code;
 
-            if (
-                audio.error.message
-            ) {
+            if(audio.error.message){
 
                 text +=
                     "\n" +
                     audio.error.message;
+
             }
+
         }
 
-        handleError(
-            new Error(text)
+
+        showMessage(
+            text
         );
 
     }
 );
 
 
-/* -------------------------------- */
-/* ERROR HANDLER */
-/* -------------------------------- */
+/*
+==================================================
+VOLUME
+==================================================
+*/
 
-function handleError(error) {
-
-    playing = false;
-
-    state.textContent =
-        "ERROR";
-
-    const message =
-        error &&
-        error.message
-            ? error.message
-            : String(error);
-
-
-    debugMessage(
-        "PLAY ERROR\n\n" +
-        message +
-        "\n\nURL:\n" +
-        STREAM_URL
-    );
-
-}
-
-
-/* -------------------------------- */
-/* VOLUME */
-/* -------------------------------- */
-
-volume.oninput =
-    function() {
+volume.addEventListener(
+    "input",
+    function(){
 
         const value =
-            Number(volume.value);
+            parseFloat(
+                volume.value
+            );
+
 
         audio.volume =
             value;
 
+
         volumeHandle.style.left =
             (value * 100) +
             "%";
-    };
+
+    }
+);
 
 
-audio.volume = 0.8;
+/*
+==================================================
+METADATA
+==================================================
+*/
 
+async function updateMetadata(){
 
-/* -------------------------------- */
-/* METADATA */
-/* -------------------------------- */
-
-async function loadMetadata() {
-
-    try {
+    try{
 
         const response =
             await fetch(
-                API_URL +
+                API +
                 "?t=" +
                 Date.now(),
                 {
-                    cache: "no-store"
+                    cache:"no-store"
                 }
             );
 
 
-        if (!response.ok) {
+        if(!response.ok){
 
             throw new Error(
                 "HTTP " +
                 response.status
             );
+
         }
 
 
@@ -835,25 +958,26 @@ async function loadMetadata() {
             await response.json();
 
 
-        if (
+        if(
             data.now_playing &&
             data.now_playing.song
-        ) {
+        ){
 
             const song =
                 data.now_playing.song;
 
 
-            if (song.text) {
+            if(song.text){
 
-                trackName.textContent =
+                track.innerText =
                     song.text;
+
             }
 
 
-            if (song.art) {
+            if(song.art){
 
-                try {
+                try{
 
                     const art =
                         new URL(
@@ -861,73 +985,80 @@ async function loadMetadata() {
                         );
 
 
-                    if (
-                        art.hostname ===
+                    if(
+                        art.hostname
+                            .toLowerCase() ===
                         "genwave-radio.com"
-                    ) {
+                    ){
 
-                        coverArt.src =
+                        album.src =
                             "/radio" +
                             art.pathname +
                             art.search;
 
-                    } else {
+                    }else{
 
-                        coverArt.src =
+                        album.src =
                             song.art;
+
                     }
 
 
-                    coverArt.style.display =
+                    album.style.display =
                         "block";
 
-                } catch (e) {
+                }catch(e){
 
                     console.log(
-                        "Artwork error",
+                        "ART ERROR",
                         e
                     );
+
                 }
+
             }
+
         }
 
-    } catch (error) {
+    }catch(e){
 
         console.log(
-            "Metadata unavailable",
-            error
+            "API ERROR",
+            e
         );
+
     }
+
 }
 
 
-/* -------------------------------- */
-/* INIT */
-/* -------------------------------- */
+/*
+==================================================
+INITIALIZATION
+==================================================
+*/
+
+audio.volume =
+    0.8;
+
+volume.value =
+    0.8;
 
 volumeHandle.style.left =
     "80%";
 
 
-state.textContent =
-    "READY";
-
-
-loadMetadata();
+updateMetadata();
 
 
 setInterval(
-    loadMetadata,
+    updateMetadata,
     10000
 );
 
 
-/* -------------------------------- */
-/* JS TEST */
-/* -------------------------------- */
-
 console.log(
-    "GENWAVE JAVASCRIPT LOADED"
+    "GENWAVE ACTIVITY LOADED"
 );
 
 </script>
