@@ -1,418 +1,157 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>GenWave Radio</title>
-
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&family=Syncopate:wght@700&display=swap');
-
-*{box-sizing:border-box;margin:0;padding:0}
-
-html,body{
- width:100%;
- height:100%;
- overflow:hidden;
- background:#03000a;
-}
-
-body{
- color:#fff;
- font-family:'Share Tech Mono',monospace;
- background:#03000a url('bg.jpg') center/cover no-repeat;
-}
-
-.player{
- width:100%;
- max-width:430px;
- height:100vh;
- height:100dvh;
- margin:auto;
- padding:15px 20px;
- display:flex;
- flex-direction:column;
- align-items:center;
- justify-content:space-between;
-}
-
-.header{text-align:center}
-
-.genwave{
- font:700 27px Syncopate;
- letter-spacing:5px;
- color:#d4f8ff;
- text-shadow:0 0 10px #00f4ff,0 0 25px #00f4ff;
-}
-
-.radio{
- font:700 25px Syncopate;
- letter-spacing:8px;
- color:#ffbbf0;
- text-shadow:0 0 10px #ff00a0,0 0 25px #ff00a0;
-}
-
-.cover{
- position:relative;
- width:min(60vw,270px);
- height:min(60vw,270px);
- flex-shrink:1;
- border-radius:50%;
- box-shadow:0 0 30px #ff00a0,0 0 70px #8000ff;
-}
-
-.cover:before{
- content:"";
- position:absolute;
- inset:-8px;
- border:2px solid #ff00a0;
- border-radius:50%;
- box-shadow:0 0 18px #ff00a0;
-}
-
-.cover:after{
- content:"";
- position:absolute;
- inset:-3px;
- border:2px solid #00f4ff;
- border-radius:50%;
- box-shadow:0 0 12px #00f4ff;
-}
-
-.cover-inner{
- position:absolute;
- inset:0;
- overflow:hidden;
- border-radius:50%;
- background:#03000a;
-}
-
-.logo{
- width:100%;
- height:100%;
- object-fit:contain;
- padding:12px;
-}
-
-#album{
- display:none;
- position:absolute;
- inset:0;
- width:100%;
- height:100%;
- object-fit:cover;
-}
-
-.track{
- width:100%;
- text-align:center;
-}
-
-#track{
- width:100%;
- font-size:18px;
- white-space:nowrap;
- overflow:hidden;
- text-overflow:ellipsis;
- text-shadow:0 0 8px #fff;
-}
-
-.station{
- margin-top:4px;
- font:700 11px Orbitron;
- letter-spacing:3px;
- color:#00f4ff;
-}
-
-.volume{
- width:88%;
- height:22px;
- position:relative;
-}
-
-.volume-line{
- position:absolute;
- top:50%;
- width:100%;
- height:4px;
- background-image:radial-gradient(circle,#00f4ff 2px,transparent 2px);
- background-size:9px 4px;
-}
-
-#volume{
- position:absolute;
- inset:0;
- width:100%;
- opacity:0;
- z-index:5;
-}
-
-.handle{
- position:absolute;
- top:50%;
- width:14px;
- height:14px;
- border-radius:50%;
- background:#fff;
- border:2px solid #00f4ff;
- box-shadow:0 0 12px #00f4ff;
- transform:translate(-50%,-50%);
- pointer-events:none;
-}
-
-.play-area{
- width:100%;
- height:85px;
- display:flex;
- align-items:center;
- justify-content:center;
- position:relative;
-}
-
-.wave{
- position:absolute;
- width:200px;
- height:55px;
- border:1px solid #00f4ff80;
- border-radius:50%;
- transform:rotateX(70deg);
-}
-
-#play{
- position:relative;
- z-index:10;
- width:76px;
- height:76px;
- border-radius:50%;
- border:2px solid #fff;
- background:radial-gradient(circle at 35% 28%,#fff,#dffaff 35%,#70d9f5 70%,#129cc2);
- box-shadow:0 0 30px #00f4ff,0 12px 20px #000;
- display:flex;
- align-items:center;
- justify-content:center;
- cursor:pointer;
-}
-
-#play:active{transform:scale(.9)}
-
-#play svg{
- width:29px;
- height:29px;
- fill:#063647;
-}
-
-.status{
- width:100%;
- padding-top:8px;
- border-top:1px solid #ffffff22;
- display:flex;
- justify-content:space-between;
- font:700 10px Orbitron;
- letter-spacing:1.5px;
-}
-
-.live{color:#ff0055}
-
-.dot{
- display:inline-block;
- width:7px;
- height:7px;
- border-radius:50%;
- background:#ff0055;
- box-shadow:0 0 8px #ff0055;
- margin-right:6px;
-}
-
-#status{color:#00f4ff}
-
-#message{
- display:none;
- position:fixed;
- left:15px;
- right:15px;
- bottom:20px;
- z-index:100;
- padding:12px;
- border:1px solid #00f4ff;
- border-radius:10px;
- background:#03000af5;
- color:#bcecff;
- font-size:12px;
- line-height:1.5;
- text-align:center;
- white-space:pre-line;
-}
-
-@media(max-height:650px){
- .player{padding:8px 15px}
- .genwave{font-size:21px}
- .radio{font-size:19px}
- .cover{
-  width:42vw;
-  height:42vw;
-  max-width:190px;
-  max-height:190px;
- }
- .play-area{height:65px}
- #play{width:60px;height:60px}
-}
-</style>
-</head>
-
-<body>
-
-<div class="player">
-
-<div class="header">
-<div class="genwave">GENWAVE</div>
-<div class="radio">RADIO</div>
-</div>
-
-<div class="cover">
-<div class="cover-inner">
-<img class="logo" src="lg.jpg">
-<img id="album">
-</div>
-</div>
-
-<div class="track">
-<div id="track">GenWave Radio</div>
-<div class="station">GENWAVE RADIO</div>
-</div>
-
-<div class="volume">
-<div class="volume-line"></div>
-<div id="handle" class="handle" style="left:80%"></div>
-<input id="volume" type="range" min="0" max="1" step=".01" value=".8">
-</div>
-
-<div class="play-area">
-<div class="wave"></div>
-
-<button id="play" type="button" onclick="toggleRadio()">
-<svg viewBox="0 0 24 24">
-<path d="M8 5v14l11-7z"></path>
-</svg>
-</button>
-
-</div>
-
-<div class="status">
-<div class="live"><span class="dot"></span>LIVE</div>
-<div id="status">READY</div>
-</div>
-
-</div>
-
-<div id="message"></div>
-
-<audio id="audio" preload="none" playsinline></audio>
-
-<script>
-const STREAM="/radio/listen/genwave/radio.mp3";
-const API="/radio/api/nowplaying/genwave";
-
-const audio=document.getElementById("audio");
-const status=document.getElementById("status");
-const message=document.getElementById("message");
-const volume=document.getElementById("volume");
-const handle=document.getElementById("handle");
-const track=document.getElementById("track");
-const album=document.getElementById("album");
-
-let playing=false;
-
-function toggleRadio(){
-
- message.style.display="none";
-
- if(playing){
-  audio.pause();
-  audio.removeAttribute("src");
-  audio.load();
-  playing=false;
-  status.textContent="READY";
-  return;
- }
-
- status.textContent="CLICKED";
-
- audio.volume=Number(volume.value);
- audio.src=STREAM;
-
- status.textContent="CONNECTING...";
-
- const p=audio.play();
-
- if(p){
-  p.then(function(){
-   playing=true;
-   status.textContent="PLAYING";
-  }).catch(function(e){
-   playing=false;
-   status.textContent="ERROR";
-   message.textContent="PŘEHRÁVÁNÍ SELHALO\n\n"+e.name+"\n"+e.message;
-   message.style.display="block";
-  });
- }
-}
-
-audio.addEventListener("playing",function(){
- playing=true;
- status.textContent="PLAYING";
-});
-
-audio.addEventListener("error",function(){
- playing=false;
- status.textContent="ERROR";
-
- let text="STREAM ERROR";
-
- if(audio.error){
-  text+="\nCODE: "+audio.error.code;
- }
-
- message.textContent=text;
- message.style.display="block";
-});
-
-volume.addEventListener("input",function(){
- const v=Number(volume.value);
- audio.volume=v;
- handle.style.left=(v*100)+"%";
-});
-
-async function metadata(){
-
- try{
-  const r=await fetch(API+"?t="+Date.now(),{cache:"no-store"});
-  const d=await r.json();
-  const song=d.now_playing?.song;
-
-  if(song?.text){
-   track.textContent=song.text;
-  }
-
-  if(song?.art){
-   try{
-    const u=new URL(song.art);
-
-    if(u.hostname==="genwave-radio.com"){
-     album.src="/radio"+u.pathname+u.search;
-    }else{
-     album.src=song.art;
-    }
-
-    album.style.display="block";
-   }catch(e){}
-  }
-
- }catch(e){}
-}
-
-metadata();
-setInterval(metadata,10000);
-</script>
-
-</body>
-</html>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GenWave Radio</title>
+    
+    <!-- Oficiální Discord Embedded App SDK -->
+    <script src="https://discord.com/api/embed/sdk.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700;800&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: #03000a;
+            overflow: hidden;
+            font-family: 'Share Tech Mono', monospace;
+            color: #ffffff;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: #03000a url('bg.jpg') center center / cover no-repeat fixed;
+        }
+
+        .player-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 390px;
+            height: 100vh;
+            max-height: 840px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 22px 20px 18px 20px;
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-top: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .brand-genwave {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: #d4f8ff;
+            text-shadow: 0 0 10px rgba(0, 244, 255, 0.8),
+                         0 0 20px rgba(0, 244, 255, 0.5),
+                         0 0 35px rgba(0, 244, 255, 0.3);
+            line-height: 1.15;
+            margin-left: 6px;
+        }
+
+        .brand-radio {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 9px;
+            color: #ffbbf0;
+            text-shadow: 0 0 10px rgba(255, 0, 160, 0.9),
+                         0 0 22px rgba(255, 0, 160, 0.6),
+                         0 0 40px rgba(255, 0, 160, 0.4);
+            line-height: 1.15;
+            margin-left: 9px;
+        }
+
+        .circle-display-wrap {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 30px rgba(255, 0, 160, 0.4),
+                        0 0 65px rgba(140, 0, 255, 0.25);
+        }
+
+        .ring-magenta {
+            position: absolute;
+            inset: -9px;
+            border-radius: 50%;
+            border: 2px solid #ff00a0;
+            box-shadow: 0 0 16px #ff00a0, inset 0 0 16px rgba(255, 0, 160, 0.4);
+        }
+
+        .ring-cyan {
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            border: 2px solid #00f4ff;
+            box-shadow: 0 0 10px #00f4ff;
+        }
+
+        .circle-inner-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #03000a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .default-logo-img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            z-index: 2;
+            padding: 15px;
+        }
+
+        .cover-art-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: none;
+            z-index: 3;
+        }
+
+        .track-info-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .current-track-name {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1
