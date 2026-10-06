@@ -1,55 +1,128 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="cs">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>GenWave Radio</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&family=Syncopate:wght@700&display=swap');*{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;background:#03000a;color:#fff}body{font-family:'Share Tech Mono',monospace;background:#03000a url('bg.jpg') center/cover no-repeat;display:flex;justify-content:center}.p{width:100%;max-width:390px;height:100vh;padding:22px 20px 18px;display:flex;flex-direction:column;justify-content:space-between;align-items:center}.h{text-align:center}.g{font:700 28px 'Syncopate';letter-spacing:6px;color:#d4f8ff;text-shadow:0 0 10px #00f4ff,0 0 25px #00f4ff}.r{font:700 26px 'Syncopate';letter-spacing:9px;color:#ffbbf0;text-shadow:0 0 10px #ff00a0,0 0 25px #ff00a0}.c{position:relative;width:250px;height:250px;border-radius:50%;box-shadow:0 0 30px #f0a,0 0 70px #80f5}.c:before{content:'';position:absolute;inset:-9px;border:2px solid #f0a;border-radius:50%;box-shadow:0 0 18px #f0a}.c:after{content:'';position:absolute;inset:-3px;border:2px solid #00f4ff;border-radius:50%;box-shadow:0 0 12px #00f4ff}.ci{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#03000a}.logo{width:100%;height:100%;object-fit:contain;padding:15px}.a{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.t{text-align:center;width:100%;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 8px #fff}.s{font:700 12px Orbitron;letter-spacing:3px;color:#00f4ff;text-align:center;margin-top:5px}.v{width:88%;position:relative;height:25px}.vl{position:absolute;top:50%;width:100%;height:4px;background-image:radial-gradient(circle,#00f4ff 2px,transparent 2px);background-size:9px 4px}.vh{position:absolute;top:50%;width:15px;height:15px;border-radius:50%;background:#fff;border:2px solid #00f4ff;box-shadow:0 0 12px #00f4ff;transform:translate(-50%,-50%);pointer-events:none}#vol{position:absolute;inset:0;width:100%;opacity:0}.pa{width:100%;height:120px;display:flex;justify-content:center;align-items:center;position:relative}.w{position:absolute;width:210px;height:65px;border:1px solid #00f4ff80;border-radius:50%;transform:rotateX(70deg)}#play{z-index:2;width:82px;height:82px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 35% 28%,#fff,#dffaff 35%,#70d9f5 70%,#129cc2);box-shadow:0 0 30px #00f4ff,0 12px 20px #000b,inset 0 -5px 10px #0082b499;display:flex;align-items:center;justify-content:center}#play svg{width:30px;fill:#063647}.st{width:100%;padding-top:12px;border-top:1px solid #fff2;display:flex;justify-content:space-between;font:700 11px Orbitron;letter-spacing:1.5px}.live{color:#f05}.live i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f05;box-shadow:0 0 8px #f05;margin-right:7px}#state{color:#00f4ff}#msg{display:none;position:fixed;left:15px;right:15px;bottom:65px;z-index:10;padding:12px;border:1px solid #00f4ff80;border-radius:10px;background:#03000af5;color:#bcecff;font-size:12px;line-height:1.5;text-align:center;white-space:pre-line}
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&family=Syncopate:wght@700&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#03000a}
+body{
+ color:white;
+ font-family:'Share Tech Mono',monospace;
+ background:#03000a url('bg.jpg') center/cover no-repeat;
+ display:flex;justify-content:center
+}
+.player{
+ width:100%;max-width:390px;height:100vh;padding:22px 20px 18px;
+ display:flex;flex-direction:column;justify-content:space-between;align-items:center
+}
+.header{text-align:center}
+.genwave{
+ font:700 28px 'Syncopate';letter-spacing:6px;color:#d4f8ff;
+ text-shadow:0 0 10px #00f4ff,0 0 25px #00f4ff
+}
+.radio{
+ font:700 26px 'Syncopate';letter-spacing:9px;color:#ffbbf0;
+ text-shadow:0 0 10px #ff00a0,0 0 25px #ff00a0
+}
+.cover{
+ position:relative;width:250px;height:250px;border-radius:50%;
+ box-shadow:0 0 30px #f0a,0 0 70px #80f5
+}
+.cover:before{
+ content:"";position:absolute;inset:-9px;border:2px solid #ff00a0;
+ border-radius:50%;box-shadow:0 0 18px #ff00a0
+}
+.cover:after{
+ content:"";position:absolute;inset:-3px;border:2px solid #00f4ff;
+ border-radius:50%;box-shadow:0 0 12px #00f4ff
+}
+.cover-inner{
+ position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#03000a
+}
+.logo{width:100%;height:100%;object-fit:contain;padding:15px}
+#album{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+.track{width:100%;text-align:center}
+#track{
+ width:95%;margin:auto;font-size:20px;white-space:nowrap;
+ overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 8px white
+}
+.station{
+ margin-top:5px;font:700 12px Orbitron;letter-spacing:3px;
+ color:#00f4ff;text-shadow:0 0 8px #00f4ff
+}
+.volume{position:relative;width:88%;height:25px}
+.volume-line{
+ position:absolute;top:50%;width:100%;height:4px;
+ background-image:radial-gradient(circle,#00f4ff 2px,transparent 2px);
+ background-size:9px 4px
+}
+#volume{position:absolute;inset:0;width:100%;opacity:0;z-index:5}
+.volume-handle{
+ position:absolute;top:50%;width:15px;height:15px;border-radius:50%;
+ background:white;border:2px solid #00f4ff;
+ box-shadow:0 0 12px #00f4ff;transform:translate(-50%,-50%);
+ pointer-events:none
+}
+.play-area{
+ width:100%;height:120px;display:flex;justify-content:center;
+ align-items:center;position:relative
+}
+.wave{
+ position:absolute;width:210px;height:65px;border:1px solid #00f4ff80;
+ border-radius:50%;transform:rotateX(70deg)
+}
+#play{
+ position:relative;z-index:50;width:82px;height:82px;border-radius:50%;
+ border:2px solid white;
+ background:radial-gradient(circle at 35% 28%,#fff,#dffaff 35%,#70d9f5 70%,#129cc2);
+ box-shadow:0 0 30px #00f4ff,0 12px 20px #000b,inset 0 -5px 10px #0082b499;
+ cursor:pointer;display:flex;align-items:center;justify-content:center;
+ touch-action:manipulation
+}
+#play:active{transform:scale(.9)}
+#play svg{width:30px;fill:#063647}
+
+.status{
+ width:100%;padding-top:12px;border-top:1px solid #fff2;
+ display:flex;justify-content:space-between;font:700 11px Orbitron;
+ letter-spacing:1.5px
+}
+.live{color:#f05}
+.dot{
+ display:inline-block;width:8px;height:8px;border-radius:50%;
+ background:#f05;box-shadow:0 0 8px #f05;margin-right:7px
+}
+#status{color:#00f4ff}
+
+#message{
+ display:none;position:fixed;left:15px;right:15px;bottom:65px;z-index:999;
+ padding:12px;border:1px solid #00f4ff80;border-radius:10px;
+ background:#03000af5;color:#bcecff;font-size:12px;
+ line-height:1.5;text-align:center;white-space:pre-line
+}
 </style>
 </head>
+
 <body>
-<main class="p">
-<header class="h">
-<div class="g">GENWAVE</div>
-<div class="r">RADIO</div>
-</header>
-<div class="c">
-<div class="ci">
+
+<div class="player">
+
+<div class="header">
+<div class="genwave">GENWAVE</div>
+<div class="radio">RADIO</div>
+</div>
+
+<div class="cover">
+<div class="cover-inner">
 <img class="logo" src="lg.jpg">
-<img id="art" class="a">
+<img id="album">
 </div>
 </div>
-<section>
-<div id="track" class="t">GenWave Radio</div>
-<div class="s">GENWAVE RADIO</div>
-</section>
-<div class="v">
-<div class="vl">
-</div>
-<div id="vh" class="vh" style="left:80%">
-</div>
-<input id="vol" type="range" min="0" max="1" step=".01" value=".8">
-</div>
-<div class="pa">
-<div class="w">
-</div>
-<button id="play" type="button" onclick="radio()">
-<svg viewBox="0 0 24 24">
-<path d="M8 5v14l11-7z"/>
-</svg>
-</button>
-</div>
-<div class="st">
-<div class="live">
-<i>
-</i>LIVE</div>
-<div id="state">READY</div>
-</div>
-</main>
-<div id="msg">
-</div>
-<audio id="audio" preload="none" playsinline>
-</audio>
-<script>const STREAM='/radio/listen/genwave/radio.mp3',API='/radio/api/nowplaying/genwave',a=document.getElementById('audio'),state=document.getElementById('state'),msg=document.getElementById('msg'),vol=document.getElementById('vol'),vh=document.getElementById('vh'),track=document.getElementById('track'),art=document.getElementById('art');let on=false;function radio(){state.textContent='CLICKED';msg.style.display='none';if(on){a.pause();a.removeAttribute('src');a.load();on=false;state.textContent='READY';return}state.textContent='CONNECTING...';a.volume=+vol.value;a.src=STREAM;try{let p=a.play();if(p)p.then(()=>{on=true;state.textContent='PLAYING'}).catch(e=>fail(e))}catch(e){fail(e)}}function fail(e){on=false;state.textContent='ERROR';msg.textContent='PŘEHRÁVÁNÍ SELHALO\n\n'+(e.name||'Error')+'\n'+(e.message||e);msg.style.display='block'}a.onplaying=()=>{on=true;state.textContent='PLAYING'};a.onerror=()=>{fail(a.error||new Error('Media error'))};vol.oninput=()=>{a.volume=+vol.value;vh.style.left=(+vol.value*100)+'%'};async function meta(){try{let r=await fetch(API+'?t='+Date.now(),{cache:'no-store'});let d=await r.json(),s=d.now_playing?.song;if(s?.text)track.textContent=s.text;if(s?.art){let u=new URL(s.art);art.src=u.hostname==='genwave-radio.com'?'/radio'+u.pathname+u.search:s.art;art.style.display='block'}}catch(e){}}meta();setInterval(meta,10000);</script>
-</body>
-</html>
+
+<div class="track">
