@@ -8,11 +8,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&family=Syncopate:wght@700&display=swap');
 
-*{
- box-sizing:border-box;
- margin:0;
- padding:0;
-}
+*{box-sizing:border-box;margin:0;padding:0}
 
 html,body{
  width:100%;
@@ -29,50 +25,40 @@ body{
 
 .player{
  width:100%;
- height:100dvh;
  max-width:430px;
+ height:100vh;
+ height:100dvh;
  margin:auto;
- padding:18px 20px 14px;
- display:grid;
- grid-template-rows:auto minmax(180px,1fr) auto auto auto auto;
- gap:12px;
- justify-items:center;
+ padding:15px 20px;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:space-between;
 }
 
-.header{
- text-align:center;
-}
+.header{text-align:center}
 
 .genwave{
- font:700 27px 'Syncopate';
+ font:700 27px Syncopate;
  letter-spacing:5px;
  color:#d4f8ff;
  text-shadow:0 0 10px #00f4ff,0 0 25px #00f4ff;
 }
 
 .radio{
- font:700 25px 'Syncopate';
+ font:700 25px Syncopate;
  letter-spacing:8px;
  color:#ffbbf0;
  text-shadow:0 0 10px #ff00a0,0 0 25px #ff00a0;
 }
 
-.cover-area{
- width:100%;
- min-height:0;
- display:flex;
- align-items:center;
- justify-content:center;
-}
-
 .cover{
  position:relative;
- width:min(58vw,270px);
- height:min(58vw,270px);
- max-width:270px;
- max-height:270px;
+ width:min(60vw,270px);
+ height:min(60vw,270px);
+ flex-shrink:1;
  border-radius:50%;
- box-shadow:0 0 30px #f0a,0 0 70px #80f5;
+ box-shadow:0 0 30px #ff00a0,0 0 70px #8000ff;
 }
 
 .cover:before{
@@ -161,7 +147,7 @@ body{
  z-index:5;
 }
 
-.volume-handle{
+.handle{
  position:absolute;
  top:50%;
  width:14px;
@@ -175,8 +161,8 @@ body{
 }
 
 .play-area{
- height:90px;
  width:100%;
+ height:85px;
  display:flex;
  align-items:center;
  justify-content:center;
@@ -200,17 +186,14 @@ body{
  border-radius:50%;
  border:2px solid #fff;
  background:radial-gradient(circle at 35% 28%,#fff,#dffaff 35%,#70d9f5 70%,#129cc2);
- box-shadow:0 0 30px #00f4ff,0 12px 20px #000b;
+ box-shadow:0 0 30px #00f4ff,0 12px 20px #000;
  display:flex;
  align-items:center;
  justify-content:center;
  cursor:pointer;
- touch-action:manipulation;
 }
 
-#play:active{
- transform:scale(.9);
-}
+#play:active{transform:scale(.9)}
 
 #play svg{
  width:29px;
@@ -228,9 +211,7 @@ body{
  letter-spacing:1.5px;
 }
 
-.live{
- color:#ff0055;
-}
+.live{color:#ff0055}
 
 .dot{
  display:inline-block;
@@ -242,9 +223,7 @@ body{
  margin-right:6px;
 }
 
-#status{
- color:#00f4ff;
-}
+#status{color:#00f4ff}
 
 #message{
  display:none;
@@ -259,14 +238,181 @@ body{
  background:#03000af5;
  color:#bcecff;
  font-size:12px;
+ line-height:1.5;
  text-align:center;
  white-space:pre-line;
 }
 
 @media(max-height:650px){
- .player{
-  gap:6px;
-  padding-top:10px;
-  padding-bottom:8px;
+ .player{padding:8px 15px}
+ .genwave{font-size:21px}
+ .radio{font-size:19px}
+ .cover{
+  width:42vw;
+  height:42vw;
+  max-width:190px;
+  max-height:190px;
  }
- .genwave{font-size:22
+ .play-area{height:65px}
+ #play{width:60px;height:60px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="player">
+
+<div class="header">
+<div class="genwave">GENWAVE</div>
+<div class="radio">RADIO</div>
+</div>
+
+<div class="cover">
+<div class="cover-inner">
+<img class="logo" src="lg.jpg">
+<img id="album">
+</div>
+</div>
+
+<div class="track">
+<div id="track">GenWave Radio</div>
+<div class="station">GENWAVE RADIO</div>
+</div>
+
+<div class="volume">
+<div class="volume-line"></div>
+<div id="handle" class="handle" style="left:80%"></div>
+<input id="volume" type="range" min="0" max="1" step=".01" value=".8">
+</div>
+
+<div class="play-area">
+<div class="wave"></div>
+
+<button id="play" type="button" onclick="toggleRadio()">
+<svg viewBox="0 0 24 24">
+<path d="M8 5v14l11-7z"></path>
+</svg>
+</button>
+
+</div>
+
+<div class="status">
+<div class="live"><span class="dot"></span>LIVE</div>
+<div id="status">READY</div>
+</div>
+
+</div>
+
+<div id="message"></div>
+
+<audio id="audio" preload="none" playsinline></audio>
+
+<script>
+const STREAM="/radio/listen/genwave/radio.mp3";
+const API="/radio/api/nowplaying/genwave";
+
+const audio=document.getElementById("audio");
+const status=document.getElementById("status");
+const message=document.getElementById("message");
+const volume=document.getElementById("volume");
+const handle=document.getElementById("handle");
+const track=document.getElementById("track");
+const album=document.getElementById("album");
+
+let playing=false;
+
+function toggleRadio(){
+
+ message.style.display="none";
+
+ if(playing){
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+  playing=false;
+  status.textContent="READY";
+  return;
+ }
+
+ status.textContent="CLICKED";
+
+ audio.volume=Number(volume.value);
+ audio.src=STREAM;
+
+ status.textContent="CONNECTING...";
+
+ const p=audio.play();
+
+ if(p){
+  p.then(function(){
+   playing=true;
+   status.textContent="PLAYING";
+  }).catch(function(e){
+   playing=false;
+   status.textContent="ERROR";
+   message.textContent="PŘEHRÁVÁNÍ SELHALO\n\n"+e.name+"\n"+e.message;
+   message.style.display="block";
+  });
+ }
+}
+
+audio.addEventListener("playing",function(){
+ playing=true;
+ status.textContent="PLAYING";
+});
+
+audio.addEventListener("error",function(){
+ playing=false;
+ status.textContent="ERROR";
+
+ let text="STREAM ERROR";
+
+ if(audio.error){
+  text+="\nCODE: "+audio.error.code;
+ }
+
+ message.textContent=text;
+ message.style.display="block";
+});
+
+volume.addEventListener("input",function(){
+ const v=Number(volume.value);
+ audio.volume=v;
+ handle.style.left=(v*100)+"%";
+});
+
+async function metadata(){
+
+ try{
+  const r=await fetch(API+"?t="+Date.now(),{cache:"no-store"});
+  const d=await r.json();
+  const song=d.now_playing?.song;
+
+  if(song?.text){
+   track.textContent=song.text;
+  }
+
+  if(song?.art){
+   try{
+    const u=new URL(song.art);
+
+    if(u.hostname==="genwave-radio.com"){
+     album.src="/radio"+u.pathname+u.search;
+    }else{
+     album.src=song.art;
+    }
+
+    album.style.display="block";
+   }catch(e){}
+  }
+
+ }catch(e){}
+}
+
+metadata();
+setInterval(metadata,10000);
+</script>
+
+</body>
+</html>
