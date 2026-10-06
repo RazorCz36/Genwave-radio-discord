@@ -172,4 +172,331 @@
             font-weight: 700;
             color: #00f4ff;
             letter-spacing: 3px;
-            text-shadow: 0 0 8px rgba(0, 244, 255, 
+            text-shadow: 0 0 8px rgba(0, 244, 255, 0.8);
+        }
+
+        .volume-control-wrap {
+            width: 88%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dotted-slider-bar {
+            position: relative;
+            width: 100%;
+            height: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .dots-background-line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background-image: radial-gradient(circle, rgba(0, 244, 255, 0.85) 2px, transparent 2px);
+            background-size: 9px 4px;
+            background-repeat: repeat-x;
+            top: 50%;
+            transform: translateY(-50%);
+            filter: drop-shadow(0 0 3px #00f4ff);
+        }
+
+        .volume-native-range {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .volume-ring-handle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #00f4ff;
+            box-shadow: 0 0 10px #00f4ff, 0 0 18px #00f4ff;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            transition: left 0.05s ease-out;
+        }
+
+        .play-area-3d {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 115px;
+        }
+
+        .water-surface-glow {
+            position: absolute;
+            width: 230px;
+            height: 78px;
+            border-radius: 50%;
+            bottom: 2px;
+            background: radial-gradient(ellipse at center, rgba(0, 244, 255, 0.4) 0%, rgba(140, 0, 255, 0.15) 50%, transparent 75%);
+            transform: rotateX(74deg);
+            pointer-events: none;
+        }
+
+        .water-wave-1 {
+            position: absolute;
+            width: 165px;
+            height: 54px;
+            border: 1.5px solid rgba(0, 244, 255, 0.7);
+            border-radius: 50%;
+            bottom: 14px;
+            transform: rotateX(74deg);
+            box-shadow: 0 0 12px rgba(0, 244, 255, 0.6);
+            animation: waveRipple 3s infinite ease-out;
+            pointer-events: none;
+        }
+
+        .water-wave-2 {
+            position: absolute;
+            width: 195px;
+            height: 63px;
+            border: 1px solid rgba(0, 244, 255, 0.4);
+            border-radius: 50%;
+            bottom: 8px;
+            transform: rotateX(74deg);
+            animation: waveRipple 3s infinite ease-out 1.5s;
+            pointer-events: none;
+        }
+
+        @keyframes waveRipple {
+            0% { transform: rotateX(74deg) scale(0.55); opacity: 1; }
+            100% { transform: rotateX(74deg) scale(1.35); opacity: 0; }
+        }
+
+        .btn-play-3d {
+            position: relative;
+            z-index: 12;
+            width: 78px;
+            height: 78px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 28%, #ffffff 0%, #e2f8ff 35%, #76dcf5 70%, #129cc2 100%);
+            border: 2px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 26px rgba(0, 244, 255, 0.9),
+                        0 11px 20px rgba(0, 0, 0, 0.75),
+                        inset 0 -5px 11px rgba(0, 130, 180, 0.6),
+                        inset 0 4px 7px rgba(255, 255, 255, 1);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.12s ease;
+        }
+
+        .btn-play-3d:active {
+            transform: scale(0.92);
+        }
+
+        .icon-symbol {
+            width: 28px;
+            height: 28px;
+            fill: #063647;
+            filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.8));
+        }
+
+        .bottom-status-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            color: #838a9c;
+            letter-spacing: 1.5px;
+        }
+
+        .live-tag {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: #ff0055;
+            text-shadow: 0 0 8px rgba(255, 0, 85, 0.8);
+        }
+
+        .red-dot-pulsing {
+            width: 8px;
+            height: 8px;
+            background-color: #ff0055;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ff0055;
+            animation: dotBlink 1.4s infinite;
+        }
+
+        @keyframes dotBlink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.35; transform: scale(1.25); }
+        }
+
+        .bitrate-tag {
+            color: #a0a7b8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="player-container">
+        <div class="brand-header">
+            <div class="brand-genwave">GENWAVE</div>
+            <div class="brand-radio">RADIO</div>
+        </div>
+
+        <div class="circle-display-wrap">
+            <div class="ring-magenta"></div>
+            <div class="ring-cyan"></div>
+            
+            <div class="circle-inner-content">
+                <img src="lg.jpg" class="default-logo-img" alt="GenWave Logo">
+                <img id="albumCover" class="cover-art-image" src="" alt="Album Cover">
+            </div>
+        </div>
+
+        <div class="track-info-container">
+            <div class="current-track-name" id="trackName">GenWave Radio</div>
+            <div class="sub-station-name">GENWAVE RADIO</div>
+        </div>
+
+        <div class="volume-control-wrap">
+            <div class="dotted-slider-bar">
+                <div class="dots-background-line"></div>
+                <div class="volume-ring-handle" id="volRing" style="left: 80%;"></div>
+                <input type="range" class="volume-native-range" id="volRange" min="0" max="1" step="0.01" value="0.8">
+            </div>
+        </div>
+
+        <div class="play-area-3d">
+            <div class="water-surface-glow"></div>
+            <div class="water-wave-1"></div>
+            <div class="water-wave-2"></div>
+            
+            <button class="btn-play-3d" id="playPauseBtn">
+                <svg id="iconPlay" class="icon-symbol" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg id="iconPause" class="icon-symbol" viewBox="0 0 24 24" style="display: none;">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="bottom-status-bar">
+            <div class="live-tag">
+                <div class="red-dot-pulsing"></div>
+                <span>LIVE</span>
+            </div>
+            <div class="bitrate-tag" id="bitrateVal">192 KBPS</div>
+        </div>
+    </div>
+
+    <script>
+        let discordSdk = null;
+
+        async function initDiscord() {
+            if (typeof DiscordSDK !== 'undefined') {
+                try {
+                    discordSdk = new DiscordSDK({
+                        clientId: "1556777391337115678"
+                    });
+                    await discordSdk.ready();
+                } catch (error) {}
+            }
+        }
+        initDiscord();
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const streamUrl = 'https://genwave-radio.com/listen/genwave/radio.mp3';
+            const apiUrl = 'https://genwave-radio.com/api/nowplaying/genwave';
+
+            const audio = new Audio();
+            audio.volume = 0.8;
+            audio.crossOrigin = "anonymous"; 
+
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const iconPlay = document.getElementById('iconPlay');
+            const iconPause = document.getElementById('iconPause');
+            const albumCover = document.getElementById('albumCover');
+            const trackName = document.getElementById('trackName');
+            const volRange = document.getElementById('volRange');
+            const volRing = document.getElementById('volRing');
+            const bitrateVal = document.getElementById('bitrateVal');
+
+            let isPlaying = false;
+            let currentArt = null;
+
+            async function updateMetadata() {
+                try {
+                    const res = await fetch(apiUrl);
+                    const data = await res.json();
+
+                    if (data.now_playing && data.now_playing.song) {
+                        trackName.innerText = data.now_playing.song.text;
+
+                        if (data.now_playing.song.art) {
+                            currentArt = data.now_playing.song.art;
+                            if (isPlaying) {
+                                albumCover.src = currentArt;
+                                albumCover.style.display = 'block';
+                            }
+                        }
+                    }
+
+                    if (data.station && data.station.mounts && data.station.mounts.length > 0) {
+                        const br = data.station.mounts[0].bitrate;
+                        if (br) bitrateVal.innerText = br + ' KBPS';
+                    }
+                } catch (e) {}
+            }
+
+            playPauseBtn.addEventListener('click', async () => {
+                if (isPlaying) {
+                    audio.pause();
+                    audio.src = '';
+                    isPlaying = false;
+
+                    iconPlay.style.display = 'block';
+                    iconPause.style.display = 'none';
+                    albumCover.style.display = 'none';
+                } else {
+                    try {
+                        audio.src = streamUrl + '?cb=' + Date.now();
+                        await audio.play();
+                        isPlaying = true;
+
+                        iconPlay.style.display = 'none';
+                        iconPause.style.display = 'block';
+
+                        if (currentArt) {
+                            albumCover.src = currentArt;
+                            albumCover.style.display = 'block';
+                        }
+                    } catch (err) {
+                        console.error("Chyba přehrávání:", err);
+                    }
+                }
+            });
+
+            volRange.addEventListener('input', (e) => {
+                const val = e.target.value;
+                audio.volume = val;
+                volRing.style.left = (val * 100) + '%';
+            });
+
+            updateMetadata();
+            setInterval(updateMetadata, 10000);
+        });
+    </script>
+</body>
+</html>
