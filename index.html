@@ -958,4 +958,650 @@
 
         /*
          * ==========================================================
-         *
+         * DETAILED AUDIO ERROR
+         * ==========================================================
+         */
+
+        function getAudioErrorText(
+            error
+        ) {
+
+            let result =
+                "PŘEHRÁVÁNÍ SELHALO\n\n";
+
+
+            if (error) {
+
+                result +=
+                    "JS ERROR: " +
+                    (
+                        error.name ||
+                        "Unknown"
+                    ) +
+                    "\n";
+
+                result +=
+                    (
+                        error.message ||
+                        "No message"
+                    ) +
+                    "\n\n";
+            }
+
+
+            if (audio.error) {
+
+                result +=
+                    "MEDIA ERROR: " +
+                    audio.error.code +
+                    "\n";
+
+                if (
+                    audio.error.message
+                ) {
+
+                    result +=
+                        audio.error.message +
+                        "\n";
+                }
+            }
+
+
+            result +=
+                "\nNetwork: " +
+                audio.networkState;
+
+
+            result +=
+                "\nReady: " +
+                audio.readyState;
+
+
+            /*
+             * These codes are useful if the problem
+             * occurs only inside Discord.
+             */
+
+            if (
+                error &&
+                error.name ===
+                "NotAllowedError"
+            ) {
+
+                result +=
+                    "\n\nDiscord/browser odmítl přehrávání.";
+            }
+
+
+            if (
+                error &&
+                error.name ===
+                "NotSupportedError"
+            ) {
+
+                result +=
+                    "\n\nProhlížeč odmítl audio stream.";
+            }
+
+
+            return result;
+        }
+
+
+        /*
+         * ==========================================================
+         * START RADIO
+         * ==========================================================
+         */
+
+        async function startRadio() {
+
+            if (
+                isStarting ||
+                isPlaying
+            ) {
+
+                return;
+            }
+
+
+            isStarting =
+                true;
+
+            playPauseBtn.disabled =
+                true;
+
+
+            hideMessage();
+
+
+            try {
+
+                /*
+                 * Clear old connection
+                 */
+
+                audio.pause();
+
+                audio.removeAttribute(
+                    "src"
+                );
+
+
+                try {
+
+                    audio.load();
+
+                } catch (_) {}
+
+
+                /*
+                 * Set stream
+                 */
+
+                audio.src =
+                    STREAM_URL;
+
+
+                audio.volume =
+                    Number(
+                        volRange.value
+                    );
+
+
+                console.log(
+                    "[GenWave] Starting stream:"
+                );
+
+                console.log(
+                    STREAM_URL
+                );
+
+
+                console.log(
+                    "[GenWave] User agent:",
+                    navigator.userAgent
+                );
+
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * This happens directly from
+                 * the user's Play click.
+                 */
+
+                await audio.play();
+
+
+                /*
+                 * SUCCESS
+                 */
+
+                setPlayingUI(
+                    true
+                );
+
+
+                if (currentArt) {
+
+                    showCover(
+                        currentArt
+                    );
+                }
+
+
+                updateMetadata();
+
+
+                console.log(
+                    "[GenWave] PLAYBACK SUCCESS"
+                );
+
+
+            } catch (error) {
+
+                /*
+                 * FAILURE
+                 */
+
+                setPlayingUI(
+                    false
+                );
+
+
+                console.error(
+                    "[GenWave] PLAYBACK FAILED"
+                );
+
+
+                console.error(
+                    "Error name:",
+                    error.name
+                );
+
+
+                console.error(
+                    "Error message:",
+                    error.message
+                );
+
+
+                console.error(
+                    "Audio error:",
+                    audio.error
+                );
+
+
+                console.error(
+                    "Network state:",
+                    audio.networkState
+                );
+
+
+                console.error(
+                    "Ready state:",
+                    audio.readyState
+                );
+
+
+                /*
+                 * THIS IS TEMPORARY DIAGNOSTIC.
+                 *
+                 * It will tell us exactly what
+                 * Discord is rejecting.
+                 */
+
+                showMessage(
+                    getAudioErrorText(
+                        error
+                    ),
+                    12000
+                );
+
+            } finally {
+
+                isStarting =
+                    false;
+
+                playPauseBtn.disabled =
+                    false;
+            }
+        }
+
+
+        /*
+         * ==========================================================
+         * STOP RADIO
+         * ==========================================================
+         */
+
+        function stopRadio() {
+
+            clearTimeout(
+                reconnectTimer
+            );
+
+
+            audio.pause();
+
+
+            audio.removeAttribute(
+                "src"
+            );
+
+
+            try {
+
+                audio.load();
+
+            } catch (_) {}
+
+
+            setPlayingUI(
+                false
+            );
+
+
+            showDefaultLogo();
+
+
+            console.log(
+                "[GenWave] Radio stopped."
+            );
+        }
+
+
+        /*
+         * ==========================================================
+         * RECONNECT
+         * ==========================================================
+         */
+
+        function scheduleReconnect() {
+
+            if (!isPlaying) {
+
+                return;
+            }
+
+
+            clearTimeout(
+                reconnectTimer
+            );
+
+
+            reconnectTimer =
+                setTimeout(
+                    async () => {
+
+                        if (!isPlaying) {
+
+                            return;
+                        }
+
+
+                        console.log(
+                            "[GenWave] Reconnecting..."
+                        );
+
+
+                        try {
+
+                            audio.pause();
+
+                            audio.removeAttribute(
+                                "src"
+                            );
+
+
+                            try {
+
+                                audio.load();
+
+                            } catch (_) {}
+
+
+                            audio.src =
+                                STREAM_URL;
+
+
+                            audio.volume =
+                                Number(
+                                    volRange.value
+                                );
+
+
+                            await audio.play();
+
+
+                            setPlayingUI(
+                                true
+                            );
+
+
+                            if (currentArt) {
+
+                                showCover(
+                                    currentArt
+                                );
+                            }
+
+
+                        } catch (error) {
+
+                            console.error(
+                                "[GenWave] Reconnect failed:",
+                                error
+                            );
+
+
+                            scheduleReconnect();
+                        }
+
+                    },
+                    RECONNECT_DELAY
+                );
+        }
+
+
+        /*
+         * ==========================================================
+         * PLAY BUTTON
+         * ==========================================================
+         */
+
+        playPauseBtn.addEventListener(
+            "click",
+            async function () {
+
+                if (isPlaying) {
+
+                    stopRadio();
+
+                } else {
+
+                    await startRadio();
+                }
+
+            }
+        );
+
+
+        /*
+         * ==========================================================
+         * VOLUME
+         * ==========================================================
+         */
+
+        function updateVolumeUI(
+            value
+        ) {
+
+            const numericValue =
+                Math.max(
+                    0,
+                    Math.min(
+                        1,
+                        Number(value)
+                    )
+                );
+
+
+            volRing.style.left =
+                (
+                    numericValue *
+                    100
+                ) +
+                "%";
+        }
+
+
+        volRange.addEventListener(
+            "input",
+            function (event) {
+
+                const value =
+                    Number(
+                        event.target.value
+                    );
+
+
+                audio.volume =
+                    value;
+
+
+                updateVolumeUI(
+                    value
+                );
+            }
+        );
+
+
+        /*
+         * ==========================================================
+         * AUDIO EVENTS
+         * ==========================================================
+         */
+
+        audio.addEventListener(
+            "playing",
+            function () {
+
+                setPlayingUI(
+                    true
+                );
+
+
+                console.log(
+                    "[GenWave] Stream connected."
+                );
+            }
+        );
+
+
+        audio.addEventListener(
+            "waiting",
+            function () {
+
+                console.log(
+                    "[GenWave] Buffering..."
+                );
+            }
+        );
+
+
+        audio.addEventListener(
+            "stalled",
+            function () {
+
+                console.log(
+                    "[GenWave] Stream stalled."
+                );
+
+
+                if (isPlaying) {
+
+                    scheduleReconnect();
+                }
+            }
+        );
+
+
+        audio.addEventListener(
+            "error",
+            function () {
+
+                console.error(
+                    "[GenWave] AUDIO ERROR",
+                    audio.error
+                );
+
+
+                /*
+                 * Do not immediately overwrite
+                 * the diagnostic message from play().
+                 */
+
+                if (isPlaying) {
+
+                    showMessage(
+                        "Stream přerušen — obnovuji spojení…",
+                        3000
+                    );
+
+
+                    scheduleReconnect();
+                }
+            }
+        );
+
+
+        audio.addEventListener(
+            "ended",
+            function () {
+
+                console.log(
+                    "[GenWave] Stream ended."
+                );
+
+
+                if (isPlaying) {
+
+                    scheduleReconnect();
+                }
+            }
+        );
+
+
+        /*
+         * ==========================================================
+         * INITIALIZATION
+         * ==========================================================
+         */
+
+        function initializePlayer() {
+
+            audio.volume =
+                DEFAULT_VOLUME;
+
+
+            volRange.value =
+                DEFAULT_VOLUME;
+
+
+            updateVolumeUI(
+                DEFAULT_VOLUME
+            );
+
+
+            setPlayingUI(
+                false
+            );
+
+
+            showDefaultLogo();
+
+
+            /*
+             * Load metadata immediately.
+             */
+
+            updateMetadata();
+
+
+            /*
+             * Update every 10 seconds.
+             */
+
+            metadataTimer =
+                setInterval(
+                    updateMetadata,
+                    METADATA_INTERVAL
+                );
+
+
+            console.log(
+                "[GenWave] Player initialized."
+            );
+
+
+            console.log(
+                "[GenWave] Discord iframe:",
+                window.parent !== window
+            );
+        }
+
+
+        /*
+         * ==========================================================
+         * START
+         * ==========================================================
+         */
+
+        initializePlayer();
+
+    </script>
+
+</body>
+</html>
