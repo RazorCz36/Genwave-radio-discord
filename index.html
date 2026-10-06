@@ -411,7 +411,10 @@
                         clientId: "1556777391337115678"
                     });
                     await discordSdk.ready();
-                } catch (error) {}
+                    console.log("Discord SDK je připraveno!");
+                } catch (error) {
+                    console.log("Chyba při inicializaci Discord SDK:", error);
+                }
             }
         }
         initDiscord();
@@ -423,6 +426,7 @@
             const audio = new Audio();
             audio.volume = 0.8;
             audio.crossOrigin = "anonymous"; 
+            audio.preload = "auto";
 
             const playPauseBtn = document.getElementById('playPauseBtn');
             const iconPlay = document.getElementById('iconPlay');
@@ -457,7 +461,9 @@
                         const br = data.station.mounts[0].bitrate;
                         if (br) bitrateVal.innerText = br + ' KBPS';
                     }
-                } catch (e) {}
+                } catch (e) {
+                    // Tiché selhání při offline stavu
+                }
             }
 
             playPauseBtn.addEventListener('click', async () => {
@@ -471,7 +477,8 @@
                     albumCover.style.display = 'none';
                 } else {
                     try {
-                        audio.src = streamUrl + '?cb=' + Date.now();
+                        // Přidání kusu kódu pro vynucení bezpečného načtení v iframe
+                        audio.src = streamUrl;
                         await audio.play();
                         isPlaying = true;
 
@@ -484,6 +491,7 @@
                         }
                     } catch (err) {
                         console.error("Chyba přehrávání:", err);
+                        alert("Discord blokuje přehrávání audio streamu (CORS/HTTPS). Zkus otevřít konzoli na PC.");
                     }
                 }
             });
