@@ -4,9 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GenWave Radio</title>
-    
-    <!-- Discord Embedded App SDK CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@discord/embedded-app-sdk@1"></script>
+
+    <!--
+        Discord Embedded App SDK.
+
+        POZOR: `.../@discord/embedded-app-sdk@1` (bez cesty k souboru) vrací z jsDelivr
+        CommonJS bundle, který v prohlížeči spadne na "require is not defined".
+        Proto se načítá ESM vstup `output/index.mjs` přes dynamický import v JS níže.
+        (Dřívější načítání přes tag "script src" s holým "@1" bylo jednou z příčin,
+        proč aktivita nefungovala.)
+    -->
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700;800&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap');
@@ -33,7 +40,9 @@
             justify-content: center;
             align-items: center;
             position: relative;
-            background: #03000a url('bg.jpg') center center / cover no-repeat fixed;
+            /* POZOR: název souboru v repu je BG.JPG (velká písmena).
+               GitHub Pages je case-sensitive -> 'bg.jpg' by vrátilo 404. */
+            background: #03000a url('BG.JPG') center center / cover no-repeat fixed;
         }
 
         .player-container {
@@ -42,6 +51,7 @@
             width: 100%;
             max-width: 390px;
             height: 100vh;
+            height: 100dvh;
             max-height: 840px;
             display: flex;
             flex-direction: column;
@@ -94,6 +104,18 @@
             align-items: center;
             box-shadow: 0 0 30px rgba(255, 0, 160, 0.4),
                         0 0 65px rgba(140, 0, 255, 0.25);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.15s ease;
+        }
+
+        .circle-display-wrap:active {
+            transform: scale(0.97);
+        }
+
+        .circle-display-wrap:focus-visible {
+            outline: 2px solid #00f4ff;
+            outline-offset: 8px;
         }
 
         .ring-magenta {
@@ -110,6 +132,26 @@
             border-radius: 50%;
             border: 2px solid #00f4ff;
             box-shadow: 0 0 10px #00f4ff;
+        }
+
+        /* Kruhy se roztočí, když rádio hraje */
+        .circle-display-wrap.is-loading .ring-magenta {
+            animation: spin 2.4s linear infinite;
+            border-style: dashed;
+        }
+
+        .circle-display-wrap.is-loading .ring-cyan {
+            animation: spin 1.6s linear infinite reverse;
+            border-style: dashed;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.55; }
+            50%      { opacity: 1; }
         }
 
         .circle-inner-content {
@@ -144,6 +186,50 @@
             z-index: 3;
         }
 
+        .cover-art-image.is-visible {
+            display: block;
+        }
+
+        /* Overlay se přehrávacím trojúhelníkem (jen když se nepřehrává) */
+        .circle-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            background: radial-gradient(circle, rgba(3, 0, 10, 0.35) 0%, rgba(3, 0, 10, 0.72) 100%);
+            transition: opacity 0.25s ease;
+        }
+
+        .circle-display-wrap.is-playing .circle-overlay {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .play-symbol {
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 17px 0 17px 28px;
+            border-color: transparent transparent transparent #00f4ff;
+            filter: drop-shadow(0 0 12px rgba(0, 244, 255, 0.95));
+            margin-left: 8px;
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .tap-hint {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            color: #ffbbf0;
+            text-shadow: 0 0 10px rgba(255, 0, 160, 0.9);
+        }
+
         .track-info-container {
             width: 100%;
             display: flex;
@@ -173,6 +259,11 @@
             color: #00f4ff;
             letter-spacing: 3px;
             text-shadow: 0 0 8px rgba(0, 244, 255, 0.8);
+            text-align: center;
+            max-width: 96%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .volume-control-wrap {
@@ -199,4 +290,647 @@
             background-repeat: repeat-x;
             top: 50%;
             transform: translateY(-50%);
-            filter:
+            /* Tento řádek byl v původním souboru utržený uprostřed -> celé CSS se rozbilo.
+               Původní záměr: jemný neonový svit teček. */
+            filter: drop-shadow(0 0 6px rgba(0, 244, 255, 0.75));
+            opacity: 0.45;
+        }
+
+        .dots-progress-line {
+            position: absolute;
+            left: 0;
+            height: 4px;
+            width: 80%;
+            background-image: radial-gradient(circle, #00f4ff 2px, transparent 2px);
+            background-size: 9px 4px;
+            background-repeat: repeat-x;
+            top: 50%;
+            transform: translateY(-50%);
+            filter: drop-shadow(0 0 6px rgba(0, 244, 255, 0.95))
+                    drop-shadow(0 0 14px rgba(255, 0, 160, 0.55));
+            pointer-events: none;
+        }
+
+        .dots-thumb {
+            position: absolute;
+            left: 80%;
+            top: 50%;
+            width: 13px;
+            height: 13px;
+            margin-left: -6.5px;
+            border-radius: 50%;
+            background: #ffffff;
+            transform: translateY(-50%);
+            box-shadow: 0 0 10px #00f4ff, 0 0 20px rgba(255, 0, 160, 0.9);
+            pointer-events: none;
+        }
+
+        /* Skutečný (neviditelný) range input zajišťuje ovládání prstem, myší i klávesnicí */
+        .volume-range {
+            position: absolute;
+            left: -6px;
+            width: calc(100% + 12px);
+            height: 100%;
+            margin: 0;
+            background: transparent;
+            appearance: none;
+            -webkit-appearance: none;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .volume-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+        }
+
+        .volume-range::-moz-range-thumb {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+        }
+
+        .volume-range::-moz-range-track {
+            background: transparent;
+        }
+
+        .volume-label-row {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: rgba(212, 248, 255, 0.65);
+        }
+
+        .status-line {
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: rgba(212, 248, 255, 0.7);
+            min-height: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status-line.is-error {
+            color: #ff8bd0;
+            text-shadow: 0 0 8px rgba(255, 0, 160, 0.8);
+        }
+
+        .status-line.is-live {
+            color: #00f4ff;
+            text-shadow: 0 0 8px rgba(0, 244, 255, 0.8);
+        }
+
+        .listener-count {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #00f4ff;
+            opacity: 0.8;
+            min-height: 12px;
+        }
+    </style>
+</head>
+<body>
+    <main class="player-container">
+        <header class="brand-header">
+            <div class="brand-genwave">GENWAVE</div>
+            <div class="brand-radio">RADIO</div>
+        </header>
+
+        <!-- Celý kruh je tlačítko play/pause (autoplay v Discord iframe není zaručený) -->
+        <div class="circle-display-wrap" id="playButton" role="button" tabindex="0"
+             aria-label="Přehrát rádio GenWave">
+            <div class="ring-magenta"></div>
+            <div class="ring-cyan"></div>
+            <div class="circle-inner-content">
+                <img class="default-logo-img" id="defaultLogo" src="lg.jpg" alt="GenWave Radio">
+                <img class="cover-art-image" id="coverArt" alt="Obal aktuální skladby">
+                <div class="circle-overlay" id="circleOverlay">
+                    <div class="play-symbol"></div>
+                    <div class="tap-hint" id="tapHint">PŘEHRÁT</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="track-info-container">
+            <div class="current-track-name" id="trackName">GenWave Radio</div>
+            <div class="sub-station-name" id="subStation">NOVÁ GENERACE HUDBY</div>
+            <div class="listener-count" id="listenerCount"></div>
+        </div>
+
+        <div class="volume-control-wrap">
+            <div class="dotted-slider-bar">
+                <div class="dots-background-line"></div>
+                <div class="dots-progress-line" id="dotsProgress"></div>
+                <div class="dots-thumb" id="dotsThumb"></div>
+                <input class="volume-range" id="volumeRange" type="range"
+                       min="0" max="100" step="1" value="80" aria-label="Hlasitost">
+            </div>
+            <div class="volume-label-row">
+                <span>HLASITOST</span>
+                <span id="volumeValue">80 %</span>
+            </div>
+        </div>
+
+        <div class="status-line" id="statusLine">Připraveno</div>
+    </main>
+
+    <!-- Žádný atribut `crossorigin` – Icecast stream bez CORS hlaviček musí jít přehrát -->
+    <audio id="player" preload="none"></audio>
+
+    <script type="module">
+    (async () => {
+        'use strict';
+
+        /* =====================================================================
+           KONFIGURACE
+           ===================================================================== */
+        const CONFIG = {
+            // Stream (AzuraCast / Icecast, progresivní MP3 – NE HLS).
+            STREAM_URL: 'https://genwave-radio.com/listen/genwave/radio.mp3',
+
+            // AzuraCast now-playing API (GET -> posílá Access-Control-Allow-Origin: *).
+            API_URL: 'https://genwave-radio.com/api/nowplaying/genwave',
+
+            // Veřejný origin streamu – používá se pro přepis cest na Discord proxy.
+            STREAM_ORIGIN: 'https://genwave-radio.com',
+
+            // Prefix z Developer Portalu -> Activities -> URL Mappings.
+            //   Prefix "/radio"  ->  Target "genwave-radio.com"
+            // V aktivitě se pak volá /.proxy/radio/<zbytek původní cesty>.
+            PROXY_PREFIX: '/.proxy/radio',
+
+            STATION_NAME: 'GenWave',
+            FALLBACK_TITLE: 'GenWave Radio',
+            FALLBACK_SUBTITLE: 'NOVÁ GENERACE HUDBY',
+
+            // Developer Portal -> General Information -> Application ID.
+            DISCORD_CLIENT_ID: '1556777391337115678',
+
+            METADATA_POLL_MS: 15000,
+            // Když stream mlčí takto dlouho, přehrávač sám obnoví spojení.
+            STALL_TIMEOUT_MS: 12000,
+        };
+
+        /* ---------------------------------------------------------------------
+           KONTEXT: běžíme uvnitř Discord aktivity, nebo jako běžný web?
+
+           V Discord aktivitě platí přísné CSP (document z *.discordsays.com):
+           přímé volání nemapované externí domény skončí chybou "blocked:csp",
+           a to i pro <audio> a <img>. Vše musí jít přes Discord proxy
+           (/.proxy/<prefix z portalu>), což je same-origin a CSP to povolí.
+           Mimo Discord (GitHub Pages) se naopak používá přímá URL.
+           --------------------------------------------------------------------- */
+        const IS_DISCORD_FRAME = /(^|\.)(discordsays|discordsez)\.com$/i.test(window.location.hostname);
+
+        /** Převede https://genwave-radio.com/x na /.proxy/radio/x (jen uvnitř Discord aktivity). */
+        function proxyify(url) {
+            if (!IS_DISCORD_FRAME || !url || !url.startsWith(CONFIG.STREAM_ORIGIN)) return url;
+            return CONFIG.PROXY_PREFIX + url.slice(CONFIG.STREAM_ORIGIN.length);
+        }
+
+        // V Discordu má přednost proxy (jinak to CSP zablokuje), mimo Discord přímá URL.
+        // Druhá varianta zůstává jako záloha, kdyby proxy stream nepropustila.
+        const STREAM_SOURCES = [...new Set([proxyify(CONFIG.STREAM_URL), CONFIG.STREAM_URL])];
+        const API_SOURCES = [...new Set([proxyify(CONFIG.API_URL), CONFIG.API_URL])];
+        const ART_ORIGIN = CONFIG.STREAM_ORIGIN;
+
+        let streamSourceIndex = 0;
+
+        function currentStreamUrl() {
+            return STREAM_SOURCES[streamSourceIndex % STREAM_SOURCES.length];
+        }
+
+        /** Po opakovaném selhání zkusí druhý zdroj (proxy <-> přímá URL). */
+        function rotateStreamSource() {
+            if (STREAM_SOURCES.length > 1) {
+                streamSourceIndex = (streamSourceIndex + 1) % STREAM_SOURCES.length;
+            }
+        }
+
+        /* =====================================================================
+           DOM
+           ===================================================================== */
+        const el = {
+            playButton: document.getElementById('playButton'),
+            overlay: document.getElementById('circleOverlay'),
+            tapHint: document.getElementById('tapHint'),
+            coverArt: document.getElementById('coverArt'),
+            defaultLogo: document.getElementById('defaultLogo'),
+            trackName: document.getElementById('trackName'),
+            subStation: document.getElementById('subStation'),
+            listenerCount: document.getElementById('listenerCount'),
+            dotsProgress: document.getElementById('dotsProgress'),
+            dotsThumb: document.getElementById('dotsThumb'),
+            volumeRange: document.getElementById('volumeRange'),
+            volumeValue: document.getElementById('volumeValue'),
+            statusLine: document.getElementById('statusLine'),
+            player: document.getElementById('player'),
+        };
+
+        const player = el.player;
+
+        /* =====================================================================
+           STAV
+           ===================================================================== */
+        let playIntended = false;   // chce uživatel přehrávat?
+        let lastProgressAt = Date.now();
+        let reconnectTimer = null;
+        let reconnectAttempt = 0;
+        let metadataTimer = null;
+        let watchdogTimer = null;
+        let currentArtUrl = '';
+
+        /* =====================================================================
+           POMOCNÉ FUNKCE
+           ===================================================================== */
+        function setStatus(text, kind) {
+            el.statusLine.textContent = text;
+            el.statusLine.classList.toggle('is-error', kind === 'error');
+            el.statusLine.classList.toggle('is-live', kind === 'live');
+        }
+
+        function setPlayingUi(playing) {
+            el.playButton.classList.toggle('is-playing', playing);
+            el.playButton.classList.toggle('is-loading', !playing && playIntended);
+            el.playButton.setAttribute('aria-label',
+                playing ? 'Pozastavit rádio GenWave' : 'Přehrát rádio GenWave');
+            el.tapHint.textContent = playing ? 'HRAJE' : 'PŘEHRÁT';
+        }
+
+        /** Vrací URL aktuálního zdroje s cache-busterem – tím se při reconnectu obejde zaseknutý buffer. */
+        function freshStreamSrc() {
+            const url = currentStreamUrl();
+            const sep = url.includes('?') ? '&' : '?';
+            return url + sep + 'reconnect=' + Date.now();
+        }
+
+        function clearReconnect() {
+            if (reconnectTimer !== null) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        }
+
+        /* =====================================================================
+           PŘEHRÁVÁNÍ (Icecast = progresivní stream, ne HLS)
+           ===================================================================== */
+        function connect() {
+            clearReconnect();
+
+            if (window.location.protocol === 'https:' && CONFIG.STREAM_URL.startsWith('http:')) {
+                // Mixed content: prohlížeč by audio stejně zablokoval, řekneme to rovnou.
+                playIntended = false;
+                setPlayingUi(false);
+                setStatus('Chyba: stream je http://, ale stránka https:// – použij https stream.', 'error');
+                return;
+            }
+
+            player.src = freshStreamSrc();
+            player.load();
+
+            setStatus('Připojuji se ke streamu…');
+
+            const attempt = player.play();
+            if (attempt && typeof attempt.catch === 'function') {
+                attempt.catch((err) => {
+                    // NotAllowedError = prohlížeč/Discord zablokoval autoplay -> počkáme na klik.
+                    if (err && err.name === 'NotAllowedError') {
+                        // DŮLEŽITÉ: záměr vrátíme na false, aby klik na logo přehrávání
+                        // SPUSTIL (ne aby ho hned zase zastavil).
+                        playIntended = false;
+                        setPlayingUi(false);
+                        setStatus('Klepni na logo pro spuštění přehrávání.', 'error');
+                    } else if (err && err.name === 'AbortError') {
+                        // play() přerušeno novým load() – není to chyba.
+                    } else {
+                        setStatus('Přehrávání se nezdařilo, zkouším znovu…', 'error');
+                        scheduleReconnect();
+                    }
+                });
+            }
+        }
+
+        function scheduleReconnect() {
+            if (!playIntended || reconnectTimer !== null) return;
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), 10000);
+            reconnectAttempt += 1;
+            setStatus(`Spojení přerušeno, zkouším znovu za ${Math.round(delay / 1000)} s…`, 'error');
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                if (playIntended) connect();
+            }, delay);
+        }
+
+        function startPlayback() {
+            playIntended = true;
+            reconnectAttempt = 0;
+            lastProgressAt = Date.now();
+            setPlayingUi(false);
+            connect();
+        }
+
+        function stopPlayback() {
+            playIntended = false;
+            clearReconnect();
+            // Odpojíme zdroj úplně – pozastavený progresivní stream by dál stahoval data.
+            player.pause();
+            player.removeAttribute('src');
+            player.load();
+            setPlayingUi(false);
+            setStatus('Zastaveno');
+        }
+
+        function togglePlayback() {
+            if (playIntended) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        }
+
+        /* --- Události <audio> --------------------------------------------- */
+        player.addEventListener('playing', () => {
+            lastProgressAt = Date.now();
+            reconnectAttempt = 0;
+            setPlayingUi(true);
+            setStatus('Živě vysíláme', 'live');
+            refreshMetadata();
+        });
+
+        player.addEventListener('timeupdate', () => {
+            lastProgressAt = Date.now();
+        });
+
+        player.addEventListener('waiting', () => {
+            if (playIntended) setStatus('Načítám buffer…');
+        });
+
+        player.addEventListener('stalled', () => {
+            if (playIntended) setStatus('Stream se zasekl, čekám…', 'error');
+        });
+
+        player.addEventListener('pause', () => {
+            // pause přijde i při přechodu na reconnect; rozlišujeme podle záměru.
+            if (!playIntended) setPlayingUi(false);
+        });
+
+        player.addEventListener('ended', () => {
+            // Živý stream nemá skončit – znamená to, že Icecast mount spadl.
+            if (playIntended) scheduleReconnect();
+        });
+
+        player.addEventListener('error', () => {
+            if (playIntended) {
+                // Když zdroj selže víckrát, zkusíme druhý (proxy <-> přímá URL).
+                if (reconnectAttempt >= 1) rotateStreamSource();
+                setStatus('Stream nedostupný, zkouším znovu…', 'error');
+                scheduleReconnect();
+            }
+        });
+
+        /* Hlídací pes: když 12 s nepřijde žádný zvukový pokrok, reconnect. */
+        watchdogTimer = setInterval(() => {
+            if (!playIntended) return;
+            if (document.hidden) return;
+            if (Date.now() - lastProgressAt > CONFIG.STALL_TIMEOUT_MS) {
+                lastProgressAt = Date.now();
+                reconnectAttempt = 0;
+                connect();
+            }
+        }, 4000);
+
+        /* Mobil prohlížeče po přepnutí do popředí často pozastaví audio – srovnáme stav. */
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && playIntended && player.paused) {
+                lastProgressAt = Date.now();
+                connect();
+            }
+        });
+
+        /* =====================================================================
+           OVLÁDÁNÍ HLASITOSTI
+           ===================================================================== */
+        function applyVolume(percent) {
+            const value = Math.max(0, Math.min(100, Number(percent)));
+            // 0 nikdy nenastavujeme přímo (ticho působí jako "nefunguje to"),
+            // použijeme jen minimální slyšitelnou úroveň.
+            player.volume = value === 0 ? 0.001 : value / 100;
+            player.muted = false;
+
+            el.dotsProgress.style.width = value + '%';
+            el.dotsThumb.style.left = value + '%';
+            el.volumeValue.textContent = Math.round(value) + ' %';
+            el.volumeRange.value = String(Math.round(value));
+
+            try {
+                localStorage.setItem('genwave-volume', String(Math.round(value)));
+            } catch (e) { /* sandbox bez localStorage – ignorujeme */ }
+        }
+
+        el.volumeRange.addEventListener('input', () => applyVolume(el.volumeRange.value));
+
+        let savedVolume = 80;
+        try {
+            const stored = localStorage.getItem('genwave-volume');
+            if (stored !== null && !Number.isNaN(Number(stored))) savedVolume = Number(stored);
+        } catch (e) { /* ignorujeme */ }
+        applyVolume(savedVolume);
+
+        /* =====================================================================
+           OVLÁDÁNÍ PŘEHRÁVAČE
+           ===================================================================== */
+        el.playButton.addEventListener('click', togglePlayback);
+
+        el.playButton.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                togglePlayback();
+            }
+        });
+
+        /* =====================================================================
+           METADATA "PRÁVĚ HRAJE" (AzuraCast API, s tichým fallbackem)
+           ===================================================================== */
+        function renderNowPlaying(data) {
+            const song = (data && data.now_playing && data.now_playing.song) || {};
+            const artist = (song.artist || '').trim();
+            const title = (song.title || song.text || '').trim();
+
+            if (title) {
+                el.trackName.textContent = title;
+                el.trackName.title = title;
+                el.subStation.textContent = artist || CONFIG.STATION_NAME;
+            } else {
+                el.trackName.textContent = CONFIG.FALLBACK_TITLE;
+                el.subStation.textContent = CONFIG.FALLBACK_SUBTITLE;
+            }
+
+            // Obal alba jde v Discordu také přes proxy (CSP jinak obrázek zablokuje).
+            const art = proxyify((song.art || '').trim());
+            if (art && art !== currentArtUrl) {
+                currentArtUrl = art;
+                el.coverArt.src = art;
+            }
+
+            if (data && data.live && data.live.is_live) {
+                el.subStation.textContent = 'LIVE' + (data.live.streamer_name ? ': ' + data.live.streamer_name : '');
+            }
+
+            const listeners = data && data.listeners ? data.listeners.current : null;
+            el.listenerCount.textContent =
+                (typeof listeners === 'number' && listeners > 0)
+                    ? listeners + (listeners === 1 ? ' POSLUCHAČ' : ' POSLUCHAČŮ')
+                    : '';
+
+            // Metadata do systémových ovládacích prvků (Discord / OS / sluchátka).
+            if ('mediaSession' in navigator) {
+                try {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: title || CONFIG.FALLBACK_TITLE,
+                        artist: artist || CONFIG.STATION_NAME,
+                        album: CONFIG.STATION_NAME,
+                        artwork: art ? [{ src: art, sizes: '512x512', type: 'image/jpeg' }] : [],
+                    });
+                } catch (e) { /* ignorujeme */ }
+            }
+        }
+
+        // Zapamatujeme si zdroj metadat, který fungoval, abychom zbytečně nezkoušeli oba.
+        let workingApiSource = null;
+
+        async function fetchNowPlaying() {
+            const candidates = workingApiSource ? [workingApiSource] : API_SOURCES;
+            let lastError = null;
+            for (const url of candidates) {
+                try {
+                    const response = await fetch(url, { cache: 'no-store' });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const data = await response.json();
+                    workingApiSource = url;
+                    return data;
+                } catch (e) {
+                    lastError = e;
+                    if (workingApiSource === url) workingApiSource = null;
+                }
+            }
+            throw lastError || new Error('now-playing API nedostupné');
+        }
+
+        async function refreshMetadata() {
+            try {
+                renderNowPlaying(await fetchNowPlaying());
+            } catch (e) {
+                // CORS / CSP / API nedostupné -> přehrávání to nijak neblokuje.
+                if (el.subStation.textContent === CONFIG.FALLBACK_SUBTITLE) {
+                    el.subStation.textContent = CONFIG.STATION_NAME;
+                }
+            }
+        }
+
+        function startMetadataPolling() {
+            if (metadataTimer !== null) return;
+            refreshMetadata();
+            metadataTimer = setInterval(refreshMetadata, CONFIG.METADATA_POLL_MS);
+        }
+
+        /* Obal se načetl -> zobrazíme ho místo loga */
+        el.coverArt.addEventListener('load', () => {
+            if (el.coverArt.naturalWidth > 0) el.coverArt.classList.add('is-visible');
+        });
+        el.coverArt.addEventListener('error', () => {
+            el.coverArt.classList.remove('is-visible');
+            currentArtUrl = '';
+        });
+
+        /* =====================================================================
+           DISCORD EMBEDDED APP SDK
+           ===================================================================== */
+        const clientIdLooksReal =
+            CONFIG.DISCORD_CLIENT_ID &&
+            !CONFIG.DISCORD_CLIENT_ID.startsWith('VLOZ_') &&
+            /^\d{17,20}$/.test(CONFIG.DISCORD_CLIENT_ID);
+
+        async function loadDiscordSdk() {
+            // 1) oficiální ESM vstup z jsDelivr, 2) záložně bundlovaný "+esm" build.
+            const sources = [
+                'https://cdn.jsdelivr.net/npm/@discord/embedded-app-sdk@1.9.0/output/index.mjs',
+                'https://cdn.jsdelivr.net/npm/@discord/embedded-app-sdk@1.9.0/+esm',
+            ];
+            let lastError = null;
+            for (const url of sources) {
+                try {
+                    return await import(/* @vite-ignore */ url);
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+            throw lastError || new Error('SDK se nepodařilo načíst');
+        }
+
+        async function initDiscord() {
+            if (!clientIdLooksReal) {
+                console.warn('[GenWave] DISCORD_CLIENT_ID není vyplněné – běžím jako webový přehrávač.');
+                return false;
+            }
+
+            try {
+                const sdkModule = await loadDiscordSdk();
+                const DiscordSDK = sdkModule.DiscordSDK || (sdkModule.default && sdkModule.default.DiscordSDK);
+                if (!DiscordSDK) throw new Error('DiscordSDK nenalezeno v modulu');
+
+                const discordSdk = new DiscordSDK(CONFIG.DISCORD_CLIENT_ID);
+
+                // Handshake NIKDY nesmí zablokovat přehrávání (např. při testu mimo Discord).
+                await Promise.race([
+                    discordSdk.ready(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000)),
+                ]);
+
+                window.discordSdk = discordSdk;   // pro budoucí rozšíření (identita, kanál…)
+                console.log('[GenWave] Discord SDK připraveno, instance:', discordSdk.instanceId);
+                return true;
+            } catch (error) {
+                console.warn('[GenWave] Discord SDK handshake přeskočen:', error && error.message);
+                return false;
+            }
+        }
+
+        /* =====================================================================
+           START
+           ===================================================================== */
+        if ('mediaSession' in navigator) {
+            try {
+                navigator.mediaSession.setActionHandler('play', startPlayback);
+                navigator.mediaSession.setActionHandler('pause', stopPlayback);
+            } catch (e) { /* ignorujeme */ }
+        }
+
+        startMetadataPolling();
+        setStatus('Připraveno – klepni na logo');
+
+        const inDiscord = await initDiscord();
+        if (inDiscord) setStatus('Připojeno k Discordu – klepni na logo');
+
+        // Pokus o autoplay: v Discord aktivitě obvykle projde (iframe má allow="autoplay"),
+        // v běžném prohlížeči ho prohlížeč zablokuje -> přehrávač počká na klik na logo.
+        startPlayback();
+    })();
+    </script>
+</body>
+</html>
