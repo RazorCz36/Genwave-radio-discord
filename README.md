@@ -34,17 +34,38 @@ nenačte a aktivita nemá handshake s Discordem.
 `@discord/embedded-app-sdk@1.9.0/output/index.mjs`, se záložním `+esm` buildem
 a s 4s timeoutem, aby handshake nikdy nezablokoval přehrávání.
 
-### 3. Pozadí `bg.jpg` vs. soubor `BG.JPG`
+### 3. Přímé volání `genwave-radio.com` z aktivity blokuje CSP ⚠️
+**Toto je důvod, proč rádio nehrálo konkrétně v Discord aktivitě.**
+Aktivita běží v iframe na `https://<APP_ID>.discordsays.com` pod přísným
+**Content Security Policy**. Přímý požadavek na nemapovanou externí doménu
+skončí chybou `blocked:csp` – a to **i pro `<audio>` a `<img>`**.
+Veškerý provoz tedy musí jít přes Discord proxy:
+
+| Venku (GitHub Pages) | Uvnitř Discord aktivity |
+|---|---|
+| `https://genwave-radio.com/listen/genwave/radio.mp3` | `/.proxy/radio/listen/genwave/radio.mp3` |
+| `https://genwave-radio.com/api/nowplaying/genwave` | `/.proxy/radio/api/nowplaying/genwave` |
+| `https://genwave-radio.com/api/station/.../art/...jpg` | `/.proxy/radio/api/station/.../art/...jpg` |
+
+Přehrávač to řeší automaticky: podle `location.hostname` pozná, že běží
+v aktivitě (`*.discordsays.com`), a všechny URL přepíše na `/.proxy/radio/...`.
+Mimo Discord používá přímé URL. Když jeden ze zdrojů selže, zkusí automaticky
+druhý.
+
+*Ověřeno naživo:* `https://1556777391337115678.discordsays.com/.proxy/radio/api/nowplaying/genwave`
+vrací platná JSON data → mapping `/radio` → `genwave-radio.com` funguje.
+
+### 4. Pozadí `bg.jpg` vs. soubor `BG.JPG`
 V CSS bylo `url('bg.jpg')`, ale v repu je `BG.JPG`. GitHub Pages je
 **case-sensitive** → obrázek vracel 404.
 → Opraveno na `url('BG.JPG')`.
 
-### 4. Stream je progresivní Icecast, ne HLS
+### 5. Stream je progresivní Icecast, ne HLS
 Platforma GenWave má `"hls_enabled": false` – jde o klasický Icecast/Liquidsoap
 MP3 stream. Přehrávač proto používá `<audio>` **bez** atributu `crossorigin`
 (Icecast neposílá CORS hlavičky a s `crossorigin` by se zvuk nenačetl).
 
-### 5. Chyběl reconnect a ošetření autoplay
+### 6. Chyběl reconnect a ošetření autoplay
 Živý stream se čas od času přeruší (restart Icecastu, výpadek sítě) a prohlížeče
 blokují autoplay. Přehrávač to teď řeší:
 - reconnect s exponenciálním backoffem + cache-buster (`?reconnect=<čas>`),
@@ -55,36 +76,59 @@ blokují autoplay. Přehrávač to teď řeší:
 
 ---
 
+## ⚠️ Root mapping v Developer Portalu je potřeba opravit
+
+Při testu proxy vracel root **HTTP 500**:
+
+```
+https://1556777391337115678.discordsays.com/            -> HTTP 500
+https://1556777391337115678.discordsays.com/index.html  -> HTTP 500
+https://1556777391337115678.discordsays.com/BG.JPG      -> HTTP 500
+```
+
+Na screenshotu portalu je v *Root Mapping* vidět `razorcz36.github.io/C…`,
+ale repo se jmenuje **`Genwave-radio-discord`**. Target musí být přesně:
+
+```
+razorcz36.github.io/Genwave-radio-discord/
+```
+
+(bez `https://`, s lomítkem na konci). Když je target špatně, Discord proxy
+nedokáže stáhnout vstupní HTML a aktivita se nenačte vůbec.
+
+Doporučené nastavení **Activities → URL Mappings**:
+
+| Typ | Prefix | Target |
+|---|---|---|
+| Root Mapping | `/` | `razorcz36.github.io/Genwave-radio-discord/` |
+| Proxy Path Mapping | `/radio` | `genwave-radio.com` |
+
+---
+
 ## Konfigurace
 
 Vše se nastavuje v jediném objektu `CONFIG` v `index.html`:
 
-| Konstanta | Význam |
-|---|---|
-| `STREAM_URL` | URL audio streamu (Icecast mount) |
-| `API_URL` | AzuraCast now-playing API (`/api/nowplaying/<shortcode>`) |
-| `DISCORD_CLIENT_ID` | **Application ID z Discord Developer Portalu** |
-| `METADATA_POLL_MS` | Jak často obnovovat název skladby (15 s) |
-| `STALL_TIMEOUT_MS` | Po jaké době ticha obnovit spojení (12 s) |
-
-> ⚠️ `DISCORD_CLIENT_ID` musíš vyplnit, jinak se SDK handshake přeskočí
-> (přehrávač funguje dál, ale jako běžný web – bez kontextu Discordu).
-
-Now-playing API posílá `Access-Control-Allow-Origin: *` pro `GET` (výchozí chování
-AzuraCastu), takže metadata, obal alba a počet posluchačů fungují i z GitHub Pages.
-Když by správce API CORS omezil, přehrávač se tiše přepne na statický název stanice
-a **zvuk hraje dál**.
+| Konstanta | Význam | Aktuální hodnota |
+|---|---|---|
+| `STREAM_URL` | URL audio streamu (Icecast mount) | `https://genwave-radio.com/listen/genwave/radio.mp3` |
+| `API_URL` | AzuraCast now-playing API | `https://genwave-radio.com/api/nowplaying/genwave` |
+| `STREAM_ORIGIN` | Origin, který se přepisuje na proxy | `https://genwave-radio.com` |
+| `PROXY_PREFIX` | Prefix z URL Mappings v portalu | `/.proxy/radio` |
+| `DISCORD_CLIENT_ID` | Application ID | `1556777391337115678` |
+| `METADATA_POLL_MS` | Jak často obnovovat název skladby | 15 s |
+| `STALL_TIMEOUT_MS` | Po jaké době ticha obnovit spojení | 12 s |
 
 ---
 
 ## Nastavení Discord Activity
 
-1. **Discord Developer Portal** → *New Application* → zkopíruj **Application ID**
-   a vlož ji do `CONFIG.DISCORD_CLIENT_ID`.
+1. **Developer Portal → General Information**: Application ID `1556777391337115678`
+   (je už vložené v `CONFIG.DISCORD_CLIENT_ID`).
 2. **Activities → Getting Started**: zapni *Enable Activities*.
-3. **Activities → URL Mappings**: přidej mapping `/` →
-   `https://razorcz36.github.io/Genwave-radio-discord/`
-   (nebo nech prázdné a použij přímou URL).
+3. **Activities → URL Mappings**: viz tabulka výše (root mapping musí mířit na
+   `razorcz36.github.io/Genwave-radio-discord/`, proxy mapping `/radio` →
+   `genwave-radio.com`).
 4. Aplikaci pozvi na server a spusť aktivitu v hlasovém kanálu.
 
 ### Důležité: hlavičky při vlastním hostingu
@@ -100,17 +144,23 @@ GitHub Pages tyto hlavičky neposílá, takže tam funguje bez zásahu. Pokud al
 budeš přehrávač servírovat z **webu GenWave platformy** (`/spectator/*`), narazíš:
 platforma stampuje `X-Frame-Options: DENY` + `frame-ancestors 'none'` na všechny
 *spectator* routy, a Discord by stránku odmítl vykreslit jako aktivitu.
-Stránka proto musí být hostovaná tam, kde se framing nezakazuje.
 
 ---
 
 ## Omezení, o kterých je dobré vědět
 
-- **Mobilní Discord**: audio v aktivitách může být zablokované samotnou aplikací.
+- **Google Fonts uvnitř Discordu**: `@import` na `fonts.googleapis.com` není
+  namapovaný, takže CSP ho v aktivitě zablokuje a písma se vykreslí systémovým
+  fallbackem. Vzhled to nerozbije; kdybys chtěl i tato písma, musíš si je
+  naselfhostovat do repa (a nebo přidat další URL mapping).
+- **Mobilní Discord**: audio v aktivitách může být blokované samotnou aplikací.
   Na desktopu (Windows/macOS/Linux) hraje spolehlivě.
 - **Autoplay**: v Discord aktivitě se přehrávání obvykle rozjede samo
   (iframe má `allow="autoplay"`). V běžném prohlížeči zvuk spadne až po kliknutí
   na logo – to je chování prohlížeče, ne chyba.
+- **Živý stream přes proxy**: Discord proxy propouští chunked odpovědi, ale
+  u nekonečného živého streamu to není 100% garantované. Přehrávač proto po
+  selhání automaticky zkusí i přímou URL (a naopak).
 - **Hlasitost** se ukládá do `localStorage`; v sandboxu bez úložiště se jen nepamatuje.
 
 ---
@@ -118,7 +168,7 @@ Stránka proto musí být hostovaná tam, kde se framing nezakazuje.
 ## Struktura
 
 ```
-index.html   – celý přehrávač (CSS + přehrávač + Discord SDK)
+index.html   – celý přehrávač (CSS + přehrávač + Discord SDK + proxy logika)
 BG.JPG       – pozadí (velká písmena!)
 lg.jpg       – logo stanice v kruhovém displeji
 ```

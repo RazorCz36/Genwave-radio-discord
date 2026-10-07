@@ -467,20 +467,61 @@
             // AzuraCast now-playing API (GET -> posílá Access-Control-Allow-Origin: *).
             API_URL: 'https://genwave-radio.com/api/nowplaying/genwave',
 
+            // Veřejný origin streamu – používá se pro přepis cest na Discord proxy.
+            STREAM_ORIGIN: 'https://genwave-radio.com',
+
+            // Prefix z Developer Portalu -> Activities -> URL Mappings.
+            //   Prefix "/radio"  ->  Target "genwave-radio.com"
+            // V aktivitě se pak volá /.proxy/radio/<zbytek původní cesty>.
+            PROXY_PREFIX: '/.proxy/radio',
+
             STATION_NAME: 'GenWave',
             FALLBACK_TITLE: 'GenWave Radio',
             FALLBACK_SUBTITLE: 'NOVÁ GENERACE HUDBY',
 
-            // >>> SEM VLOŽ SVÉ DISCORD APPLICATION (CLIENT) ID <<<
             // Developer Portal -> General Information -> Application ID.
-            // Když zůstane placeholder, aktivita se načte jako běžný webový přehrávač
-            // (SDK handshake se přeskočí, aby nikdy nezablokoval přehrávání).
-            DISCORD_CLIENT_ID: 'VLOZ_SEM_SVE_CLIENT_ID',
+            DISCORD_CLIENT_ID: '1556777391337115678',
 
             METADATA_POLL_MS: 15000,
             // Když stream mlčí takto dlouho, přehrávač sám obnoví spojení.
             STALL_TIMEOUT_MS: 12000,
         };
+
+        /* ---------------------------------------------------------------------
+           KONTEXT: běžíme uvnitř Discord aktivity, nebo jako běžný web?
+
+           V Discord aktivitě platí přísné CSP (document z *.discordsays.com):
+           přímé volání nemapované externí domény skončí chybou "blocked:csp",
+           a to i pro <audio> a <img>. Vše musí jít přes Discord proxy
+           (/.proxy/<prefix z portalu>), což je same-origin a CSP to povolí.
+           Mimo Discord (GitHub Pages) se naopak používá přímá URL.
+           --------------------------------------------------------------------- */
+        const IS_DISCORD_FRAME = /(^|\.)(discordsays|discordsez)\.com$/i.test(window.location.hostname);
+
+        /** Převede https://genwave-radio.com/x na /.proxy/radio/x (jen uvnitř Discord aktivity). */
+        function proxyify(url) {
+            if (!IS_DISCORD_FRAME || !url || !url.startsWith(CONFIG.STREAM_ORIGIN)) return url;
+            return CONFIG.PROXY_PREFIX + url.slice(CONFIG.STREAM_ORIGIN.length);
+        }
+
+        // V Discordu má přednost proxy (jinak to CSP zablokuje), mimo Discord přímá URL.
+        // Druhá varianta zůstává jako záloha, kdyby proxy stream nepropustila.
+        const STREAM_SOURCES = [...new Set([proxyify(CONFIG.STREAM_URL), CONFIG.STREAM_URL])];
+        const API_SOURCES = [...new Set([proxyify(CONFIG.API_URL), CONFIG.API_URL])];
+        const ART_ORIGIN = CONFIG.STREAM_ORIGIN;
+
+        let streamSourceIndex = 0;
+
+        function currentStreamUrl() {
+            return STREAM_SOURCES[streamSourceIndex % STREAM_SOURCES.length];
+        }
+
+        /** Po opakovaném selhání zkusí druhý zdroj (proxy <-> přímá URL). */
+        function rotateStreamSource() {
+            if (STREAM_SOURCES.length > 1) {
+                streamSourceIndex = (streamSourceIndex + 1) % STREAM_SOURCES.length;
+            }
+        }
 
         /* =====================================================================
            DOM
@@ -532,10 +573,11 @@
             el.tapHint.textContent = playing ? 'HRAJE' : 'PŘEHRÁT';
         }
 
-        /** Vrací stream URL s cache-busterem – tím se při reconnectu obejde zaseknutý buffer. */
+        /** Vrací URL aktuálního zdroje s cache-busterem – tím se při reconnectu obejde zaseknutý buffer. */
         function freshStreamSrc() {
-            const sep = CONFIG.STREAM_URL.includes('?') ? '&' : '?';
-            return CONFIG.STREAM_URL + sep + 'reconnect=' + Date.now();
+            const url = currentStreamUrl();
+            const sep = url.includes('?') ? '&' : '?';
+            return url + sep + 'reconnect=' + Date.now();
         }
 
         function clearReconnect() {
@@ -655,6 +697,8 @@
 
         player.addEventListener('error', () => {
             if (playIntended) {
+                // Když zdroj selže víckrát, zkusíme druhý (proxy <-> přímá URL).
+                if (reconnectAttempt >= 1) rotateStreamSource();
                 setStatus('Stream nedostupný, zkouším znovu…', 'error');
                 scheduleReconnect();
             }
@@ -737,7 +781,8 @@
                 el.subStation.textContent = CONFIG.FALLBACK_SUBTITLE;
             }
 
-            const art = (song.art || '').trim();
+            // Obal alba jde v Discordu také přes proxy (CSP jinak obrázek zablokuje).
+            const art = proxyify((song.art || '').trim());
             if (art && art !== currentArtUrl) {
                 currentArtUrl = art;
                 el.coverArt.src = art;
@@ -766,13 +811,32 @@
             }
         }
 
+        // Zapamatujeme si zdroj metadat, který fungoval, abychom zbytečně nezkoušeli oba.
+        let workingApiSource = null;
+
+        async function fetchNowPlaying() {
+            const candidates = workingApiSource ? [workingApiSource] : API_SOURCES;
+            let lastError = null;
+            for (const url of candidates) {
+                try {
+                    const response = await fetch(url, { cache: 'no-store' });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const data = await response.json();
+                    workingApiSource = url;
+                    return data;
+                } catch (e) {
+                    lastError = e;
+                    if (workingApiSource === url) workingApiSource = null;
+                }
+            }
+            throw lastError || new Error('now-playing API nedostupné');
+        }
+
         async function refreshMetadata() {
             try {
-                const response = await fetch(CONFIG.API_URL, { cache: 'no-store' });
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                renderNowPlaying(await response.json());
+                renderNowPlaying(await fetchNowPlaying());
             } catch (e) {
-                // CORS vypnuté / API nedostupné -> přehrávání to nijak neblokuje.
+                // CORS / CSP / API nedostupné -> přehrávání to nijak neblokuje.
                 if (el.subStation.textContent === CONFIG.FALLBACK_SUBTITLE) {
                     el.subStation.textContent = CONFIG.STATION_NAME;
                 }
