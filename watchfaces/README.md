@@ -35,6 +35,13 @@ white rectangular markers are all gone. What is left is the dial's own fine minu
 and everything inside it, so the face fills the screen. All unit constants derive from
 `DIAL_R`, so hands, registers, readouts and the date move with the crop automatically.
 
+**The register bezels are redrawn as one continuous ring.** Each sub-dial has a raised
+steel bezel outside its printed scale. Wherever a hand crossed one, a chunk of that bezel
+was missing from the photograph, which read as an unfinished ring. `draw_bezel()` rebuilds
+the whole annulus from the photographed profile (bright band, dark outer edge, a soft
+top-left highlight), so all three rings are complete and identical; the 6 o'clock ring
+leaves the date aperture untouched.
+
 **Registers are repainted, then re-printed.** Each sub-dial interior is wiped to a clean
 black disc (0.97 of its radius) and a regular 60-tick scale is drawn back procedurally —
 the photo's own scale sat under the removed register hands and carried a bright "erased
@@ -101,7 +108,7 @@ Whatever stays black is the property the converter destroys.
 
 **Asset sizes are locked to the XML.** Store faces do declare sizes that differ from the
 bitmap, but matching them costs nothing and removes one variable. The plate is 512 px and
-declared 512; each hand sprite is 404 / 530 / 510 px and declared at exactly that width.
+declared 512; each hand sprite is 404 / 486 / 470 px and declared at exactly that width.
 `build_watch.py` asserts this: every `path=` bitmap matches its declaration.
 
 The same reason killed `opacity="{abright} and 100 or 80"` on hands and date — this build
@@ -120,7 +127,8 @@ The dial is **the original photograph**, not a redraw: every hand was cut out as
 RGBA sprite, the plate behind it was reconstructed, and the printed date digit was
 erased so a real date can be drawn over the cream plate.
 
-* `build/plate5.py` — mirrors the clean half of the dial over each removed hand, builds
+* `build/plate5.py` — mirrors the clean half of the dial over each removed hand, rebuilds
+  the three sub-dial bezels, builds
   the exact swath of every hand from the measured geometry,
   fills it by angular interpolation around the dial centre and around each sub-dial
   centre (so the skeleton bridges continue *around* the removed hand instead of being
@@ -159,3 +167,6 @@ python3 build_watch.py            # writes ../Carrera_Porsche963.watch
 * The sliver of dial that sat under each hand was reconstructed; the dynamic hands
   cover those areas again in normal use.
 * Hands are drawn at the photo's exact axes in `preview.jpg` only as a still pose.
+* The hands are trimmed to 0.90 (minute) and 0.88 (chrono) of the dial radius: in the
+  photo they reach past the crop, so at full length they would touch the edge of the
+  round screen.

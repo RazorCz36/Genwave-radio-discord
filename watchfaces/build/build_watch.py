@@ -199,7 +199,7 @@ def build_hands():
                        ("hand_second.png", "chrono")):
         h = HANDS[kind]
         red = kind == "chrono"
-        r_out = min(h["r_out"], DIAL_R * (0.96 if red else 0.985))
+        r_out = min(h["r_out"], DIAL_R * (0.88 if red else 0.90))
         side = make_hand(os.path.join(WORK, "images", name),
                          length=r_out * k, tail=abs(h["r_in"]) * k,
                          w_near=h["w_near"] * k * (0.58 if red else 1.22),

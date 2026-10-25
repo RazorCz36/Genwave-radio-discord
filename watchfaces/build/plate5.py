@@ -303,6 +303,41 @@ def clean_subdial(img, cx, cy, r_clean, seed=11, keep_rect=None):
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def draw_bezel(img, cx, cy, r, lit=0.12, keep_rect=None):
+    """Repaint a sub-dial's raised bezel as one continuous machined ring.
+
+    The photo's bezels are a plain bright annulus (r 0.97 .. 1.10 of the register
+    radius) sitting outside the printed ticks; wherever a hand crossed one, a chunk of
+    it was missing, which read as an unfinished ring.  A radial profile sampled from the
+    photo plus a soft top-left highlight rebuilds it identically for all three dials.
+    """
+    h, w = img.shape[:2]
+    r1 = 1.12 * r
+    y0, y1 = max(0, int(cy - r1 - 4)), min(h, int(cy + r1 + 5))
+    x0, x1 = max(0, int(cx - r1 - 4)), min(w, int(cx + r1 + 5))
+    yy, xx = np.mgrid[y0:y1, x0:x1].astype(np.float32)
+    rr = np.hypot(xx - cx, yy - cy) / r
+    ang = np.arctan2(yy - cy, xx - cx)
+
+    knot_r = [0.930, 0.960, 0.975, 0.995, 1.020, 1.045, 1.070, 1.092, 1.110, 1.130]
+    knot_v = [0.0, 70.0, 118.0, 152.0, 150.0, 143.0, 128.0, 92.0, 44.0, 0.0]
+    prof = np.interp(rr, knot_r, knot_v)
+    litf = 1.0 + lit * np.cos(ang + math.radians(135.0))
+    val = np.clip(prof * litf, 0, 255).astype(np.float32)
+
+    a = np.clip((rr - 0.930) / 0.022, 0, 1) * np.clip((1.130 - rr) / 0.022, 0, 1)
+    if keep_rect is not None:                      # never paint over the date aperture
+        kx0, ky0, kx1, ky1 = keep_rect
+        sub = a[ky0 - y0:ky1 - y0, kx0 - x0:kx1 - x0]
+        sub.fill(0.0)
+    a = a[..., None]
+    patch = img[y0:y1, x0:x1].astype(np.float32)
+    tint = np.array([1.0, 0.995, 0.99], np.float32)
+    patch = patch * (1 - a) + (val[..., None] * tint) * a
+    img[y0:y1, x0:x1] = np.clip(patch, 0, 255).astype(np.uint8)
+    return img
+
+
 def print_ticks(img, cx, cy, r, n=60, skip=None):
     """Redraw a clean printed scale on a cleaned sub-dial.
 
@@ -370,7 +405,9 @@ def main():
     work = a.copy()
     work, m = mirror_fill(work, m, cx)
     for sx, sy, sr in REGS:
-        work = flat_fill(work, m, sx * SCALE, sy * SCALE, 0.0, (sr - 9) * SCALE)
+        # stop short of the raised bezel: a low percentile there is dark, which used
+        # to eat a chunk out of the ring wherever a hand crossed it
+        work = flat_fill(work, m, sx * SCALE, sy * SCALE, 0.0, sr * 0.70 * SCALE)
     for sx, sy, sr in REGS:
         work = polar_lerp(work, m, sx * SCALE, sy * SCALE, 0.0, (sr + 3) * SCALE, src)
     work = polar_lerp(work, m, cx, cy, 24 * SCALE, 246 * SCALE, src)
@@ -398,6 +435,8 @@ def main():
         # the 6 o'clock register keeps its date aperture: no ticks across the window
         out = print_ticks(out, sx * SCALE, sy * SCALE, sr * SCALE,
                           skip=(78.0, 102.0) if i == 2 else None)
+        out = draw_bezel(out, sx * SCALE, sy * SCALE, sr * SCALE,
+                         keep_rect=(keep if i == 2 else None))
 
     Image.fromarray(out).save(os.path.join(OUT, "plate_full.png"))
     size = int(round(case_r * 2 * CROP_FRAC))
