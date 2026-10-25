@@ -26,6 +26,8 @@ WORK = os.environ.get("WATCH_WORK", "/tmp/out/final")
 DELIVER = os.path.dirname(HERE)          # .../watchfaces
 
 SCALE = 2.6
+PLATE_PX = 1280          # 3x the watch's own screen; keeps the package small enough to sync
+HAND_PX = 760
 CX, CY = 290.6, 535.4
 CASE_R = 286.0
 
@@ -59,7 +61,7 @@ def make_plate():
     """Square RGBA plate: case circle exactly fills the canvas, transparent outside."""
     src = Image.open(os.path.join(WORK, "plate_crop.png")).convert("RGB")
     n = src.size[0]
-    px = 2048
+    px = PLATE_PX
     src = src.resize((px, px), Image.LANCZOS)
     a = np.asarray(src).astype(np.uint8)
 
@@ -77,7 +79,7 @@ def make_plate():
     dim = np.clip((f ** 0.55) * 255.0, 0, 255).astype(np.uint8)
     dim_im = Image.fromarray(np.dstack([dim, alpha.astype(np.uint8)]), "RGBA")
     # ambient mode is low-detail: half resolution keeps the package small
-    dim_im = dim_im.resize((px // 2, px // 2), Image.LANCZOS)
+    dim_im = dim_im.resize((PLATE_PX // 2, PLATE_PX // 2), Image.LANCZOS)
     dim_im.save(os.path.join(WORK, "images", ".img2.png"))
     return px
 
@@ -110,7 +112,7 @@ def trim_hand(path, out_path):
     side = max(crop.size)
     canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     canvas.paste(crop, ((side - crop.size[0]) // 2, (side - crop.size[1]) // 2))
-    out_px = min(1400, max(240, side))
+    out_px = min(HAND_PX, max(240, side))
     canvas = canvas.resize((out_px, out_px), Image.LANCZOS)
     canvas.save(out_path)
     extent = max(abs(xs.min() - c), abs(xs.max() - c), abs(ys.min() - c), abs(ys.max() - c))
@@ -170,7 +172,7 @@ def watch_xml():
         '<Watch name="Carrera x Porsche 963" '
         'description="TAG Heuer Carrera Chronograph x Porsche 963 (CBU2010.FT6267). '
         'Photo-faithful dial, carbon tachymeter bezel, live chronograph and date." '
-        'features="12h Time,Analog,Date,Smooth Seconds,Stopwatch" '
+        'features="12h Time,Analog,Date,Smooth Seconds,Battery Level,Step Counter,Weather" '
         'shape="R" author="Arena Agent" web_link="" bg_color="000000" '
         'ucolor_default="ffffff" ind_loc="bc" ind_bg="Y" hotword_loc="bc" hotword_bg="N">')
 
@@ -182,19 +184,12 @@ def watch_xml():
 
     # sub-dial readouts: battery / steps / weather replace the chrono registers.
     # A soft black disc knocks the printed 1-12 / 5-30 scales back so the numbers read.
-    READOUTS = [
-        # caption, tag, register index, caption size, value size, disc w, disc h, disc y offset
-        ("BATTERY", "{blp}", 0, 9, 23, 96, 96, 0),
-        ("STEPS", "{ssc}", 1, 9, 20, 96, 96, 0),
-        ("WEATHER", "{wtd}", 2, 8, 18, 78, 46, -24),
-    ]
-    for cap, val, cu, size_cap, size_val, dw, dh, dy in READOUTS:
+    for cap, tag, _sample, cu, size_cap, size_val in READOUTS:
         x, y = REG_UNITS[cu]
-        lines.append(shape_layer(f"{cap.lower()} plate", x, y + dy, dw, dh, "050608", 72))
-        lines.append(text_layer(f"{cap.lower()} value", x, y + dy + (6 if dy == 0 else 1),
-                                val, size_val, "f4f6f8", "c2c7cc"))
-        lines.append(text_layer(f"{cap.lower()} label", x, y + dy - (26 if dy == 0 else 16),
-                                cap, size_cap, "9aa0a6", "71777d"))
+        lines.append(text_layer(f"{cap.lower()} value", x, y + 7, tag, size_val,
+                                "f4f6f8", "c9ced3"))
+        lines.append(text_layer(f"{cap.lower()} label", x, y - 19, cap, size_cap,
+                                "9aa0a6", "7c8288"))
 
     # date window (dynamic)
     lines.append(text_layer("date", DATE_U[0], DATE_U[1], "{dd}", DATE_SIZE,
@@ -211,10 +206,10 @@ def watch_xml():
 
 # ---------------------------------------------------------------- preview
 READOUTS = [
-    # caption, sample value, register index, caption size, value size, disc w, h, dy
-    ("BATTERY", "87%", 0, 9, 23, 96, 96, 0),
-    ("STEPS", "6420", 1, 9, 20, 96, 96, 0),
-    ("WEATHER", "12\u00b0C", 2, 8, 18, 78, 46, -24),
+    # caption, tag, sample value (preview only), register index, caption size, value size
+    ("BATTERY", "{blp}", "87%", 0, 9, 24),
+    ("STEPS", "{ssc}", "6420", 1, 9, 22),
+    ("WEATHER", "{wtd}", "12\u00b0C", 2, 8, 21),
 ]
 
 
@@ -230,20 +225,14 @@ def compose_preview(plate, hand_alpha=1.0):
     # sub-dial readouts under the hands, same geometry as the layers
     d = ImageDraw.Draw(base)
     font_path = os.path.join(WORK, "fonts", "SairaSemiBold.ttf")
-    for cap, val, cu, size_cap, size_val, dw, dh, dy in READOUTS:
+    for cap, _tag, val, cu, size_cap, size_val in READOUTS:
         x, y = REG_UNITS[cu]
         px = W / 2 + x * W / 512.0
-        py = W / 2 + (y + dy) * W / 512.0
-        disc = Image.new("RGBA", (W, W), (0, 0, 0, 0))
-        ImageDraw.Draw(disc).ellipse(
-            [px - dw * W / 1024, py - dh * W / 1024, px + dw * W / 1024, py + dh * W / 1024],
-            fill=(5, 6, 8, int(255 * 0.72)))
-        base.alpha_composite(disc)
         f_cap = ImageFont.truetype(font_path, size_cap)
         f_val = ImageFont.truetype(font_path, size_val)
-        d.text((px, py + (6 if dy == 0 else 1)), val, font=f_val,
+        d.text((px, W / 2 + (y + 7) * W / 512.0), val, font=f_val,
                fill=(0xf4, 0xf6, 0xf8), anchor="mm")
-        d.text((px, py - (26 if dy == 0 else 16)), cap, font=f_cap,
+        d.text((px, W / 2 + (y - 19) * W / 512.0), cap, font=f_cap,
                fill=(0x9a, 0xa0, 0xa6), anchor="mm")
 
     # date

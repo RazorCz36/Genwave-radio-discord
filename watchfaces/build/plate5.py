@@ -234,6 +234,30 @@ def extract_hand(img, cx, cy, axis_deg, r_in, r_out, w_near, w_far, kind):
     return Image.fromarray(rgba, "RGBA")
 
 
+def clean_subdial(img, cx, cy, r_clean, seed=11, keep_rect=None):
+    """Paint a plain black sub-dial face so a live readout can sit in the middle.
+
+    The photo's registers carry printed 1-12 / 5-30 scales; the readouts need a clean
+    surface, so the interior is replaced by a black disc with the same vignette + grain.
+    """
+    h, w = img.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    rr = np.hypot(xx - cx, yy - cy)
+    feather = 2.0
+    m = np.clip((r_clean - rr) / feather, 0.0, 1.0)
+    if keep_rect is not None:
+        x0, y0, x1, y1 = keep_rect
+        m[y0:y1, x0:x1] = 0.0
+    m = m[..., None]
+    t = np.clip(rr / r_clean, 0, 1)[..., None]
+    base = 31.0 - 15.0 * (t ** 1.5)
+    rng = np.random.default_rng(seed)
+    grain = rng.normal(0, 3.2, (h, w, 1))
+    synth = base + grain
+    out = img.astype(np.float32) * (1 - m) + synth * m
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     img = Image.open(SRC).convert("RGB")
@@ -295,6 +319,11 @@ def main():
     wm = cv2.GaussianBlur(grain_mask.astype(np.float32), (0, 0), 1.4)[..., None] / 255.0
     out = work.astype(np.float32) * (1 - wm) + (soft + grain) * wm
     out = np.clip(out, 0, 255).astype(np.uint8)
+
+    keep = [int(273 * SCALE), int(670 * SCALE), int(309 * SCALE), int(713 * SCALE)]
+    for i, (sx, sy, sr) in enumerate(REGS):
+        out = clean_subdial(out, sx * SCALE, sy * SCALE, 50.0 * SCALE, seed=11 + i,
+                            keep_rect=(keep if i == 2 else None))
 
     Image.fromarray(out).save(os.path.join(OUT, "plate_full.png"))
     size = int(round(case_r * 2))

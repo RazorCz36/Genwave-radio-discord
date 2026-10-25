@@ -29,8 +29,11 @@ WatchMaker Studio can open the same file on desktop (*File → Import .watch*).
 | 6 o'clock dial | **weather** — `{wtd}` (e.g. `12°C`) |
 | Date aperture | `{dd}` in a bundled Saira SemiBold |
 
-The three small dials have a soft black disc under the readout so the numbers are
-readable on top of the printed 1-12 / 5-30 scales.
+The printed scales inside the three small dials are **erased in the plate itself**
+(the interiors are repainted as clean black discs with matched grain), so each readout
+sits on plain black in the centre of its ring — no overlay disc is used. The 6 o'clock
+repaint deliberately stops short of the date aperture so the printed cream window and
+its black frame survive.
 
 **Bright vs ambient.** The face ships two plates: `.img1.png` (the photo, `display="b"`)
 and `.img2.png`, a gamma-lifted copy (`display="d"`). Watches darken everything in
