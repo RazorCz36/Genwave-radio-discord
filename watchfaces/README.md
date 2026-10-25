@@ -5,6 +5,11 @@ photograph of the **CBU2010.FT6267** (Carrera Chronograph x Porsche 963).
 
 ![preview](preview.jpg)
 
+Three moments of the live face (`mockup.jpg`) — hands, chrono registers and date all
+driven by the tags in the table below:
+
+![mockup](mockup.jpg)
+
 ## Import
 
 1. Copy `Carrera_Porsche963.watch` to your phone.
@@ -39,6 +44,13 @@ erased so a real date can be drawn over the cream plate.
   and cuts the hand sprites with the pivot centred.
 * `build/build_watch.py` — trims the sprites, makes the 2048² circular plate,
   writes `watch.xml`, renders `preview.jpg` / `preview_dim.jpg` and zips the `.watch`.
+
+Render a still of the packaged face, or a device mockup:
+
+```bash
+python3 render_face.py out.png --time 22:47 --date 25 --chrono 1:42 --size 640
+python3 mockup.py mockup.jpg
+```
 
 Rebuild (needs `opencv-python`, `numpy`, `Pillow`):
 
