@@ -32,8 +32,10 @@ SCALE = 2.6
 PLATE_PX = 512
 CX, CY = 290.6, 535.4
 CASE_R = 286.0
-DIAL_R = CASE_R * 0.82   # plate5 crops to the dial only (no carbon bezel), so the
-                         # 512-unit canvas now spans 80 % of the old case radius
+CROP_FRAC = 0.695        # of the case radius: just inside the big marker ring, so the
+                         # face keeps its own fine minute track and nothing else
+DIAL_R = CASE_R * CROP_FRAC   # plate5 crops here, so 512 units span this radius
+UI = 0.82 / CROP_FRAC    # text/offset scale against the previous 0.82 crop
 
 # WatchMaker canvas is 512 x 512; the case circle (r = 256) fills it.
 U_PER_CROP_PX = 512.0 / (DIAL_R * 2 * SCALE)
@@ -49,7 +51,7 @@ REGS = [(186.0, 535.5, 75.0), (398.5, 535.5, 75.0), (292.0, 641.0, 70.0)]
 DATE_CX, DATE_CY = 291.5, 691.5
 DATE_U = ((DATE_CX - CX) / DIAL_R * 256.0, (DATE_CY - CY) / DIAL_R * 256.0)
 DATE_FONT = "sairasemibold"   # WFF-safe resource name (lowercase)
-DATE_SIZE = 21
+DATE_SIZE = 22        # two digits must still fit the narrow aperture
 
 # register centres in units, relative to the dial centre
 REG_UNITS = [((x - CX) / DIAL_R * 256.0, (y - CY) / DIAL_R * 256.0) for x, y, _ in REGS]
@@ -109,15 +111,15 @@ def _steel_gradient(size, stops):
     return g.resize((size, size))
 
 
-STEEL = [(0.00, (64, 69, 74)), (0.10, (150, 157, 164)), (0.26, (238, 243, 248)),
-         (0.46, (255, 255, 255)), (0.56, (214, 220, 226)), (0.78, (168, 175, 182)),
-         (0.90, (196, 202, 208)), (1.00, (58, 63, 68))]
+STEEL = [(0.00, (58, 62, 67)), (0.10, (138, 145, 152)), (0.26, (216, 222, 228)),
+         (0.46, (240, 244, 248)), (0.56, (198, 204, 210)), (0.78, (156, 163, 170)),
+         (0.90, (184, 190, 196)), (1.00, (52, 57, 62))]
 RED = [(0.00, (118, 8, 14)), (0.20, (198, 28, 34)), (0.50, (247, 66, 66)),
        (0.74, (200, 26, 32)), (1.00, (104, 6, 12))]
 
 
 def make_hand(path, length, tail, w_near, w_far, stops, hub_r=0.0, hub_stops=None,
-              facet=0.0, facet_col=(21, 23, 26), tip=0.0):
+              facet=0.0, facet_col=(18, 20, 23), tip=0.0):
     """Draw one complete hand pointing up with its pivot in the middle.
 
     The photo-derived sprites could not be cut out cleanly (the hands are skeleton
@@ -197,15 +199,16 @@ def build_hands():
                        ("hand_second.png", "chrono")):
         h = HANDS[kind]
         red = kind == "chrono"
+        r_out = min(h["r_out"], DIAL_R * (0.96 if red else 0.985))
         side = make_hand(os.path.join(WORK, "images", name),
-                         length=h["r_out"] * k, tail=abs(h["r_in"]) * k,
+                         length=r_out * k, tail=abs(h["r_in"]) * k,
                          w_near=h["w_near"] * k * (0.58 if red else 1.22),
                          w_far=h["w_far"] * k * (0.58 if red else 1.22),
                          stops=RED if red else STEEL,
                          hub_r=(6.0 if red else 9.5),
                          hub_stops=[(0.0, (118, 123, 128)), (0.42, (236, 241, 245)),
                                     (0.60, (206, 212, 218)), (1.0, (104, 109, 114))],
-                         facet=0.0 if red else 0.64,
+                         facet=0.0 if red else 0.70,
                          tip=0.0 if red else 0.34)
         out.append((name, side))
     return out
@@ -332,10 +335,10 @@ def watch_xml():
     # A soft black disc knocks the printed 1-12 / 5-30 scales back so the numbers read.
     for cap, tag, _sample, cu, size_cap, size_val in READOUTS:
         x, y = REG_UNITS[cu]
-        lines.append(text_layer(f"{cap.lower()} value", x, y + 10, tag, size_val,
-                                "f4f6f8", "c9ced3"))
-        lines.append(text_layer(f"{cap.lower()} label", x, y - 26, cap, size_cap,
-                                "9aa0a6", "7c8288"))
+        lines.append(text_layer(f"{cap.lower()} value", x, y + 10 * UI, tag,
+                                int(round(size_val * UI)), "f4f6f8", "c9ced3"))
+        lines.append(text_layer(f"{cap.lower()} label", x, y - 26 * UI, cap,
+                                int(round(size_cap * UI)), "9aa0a6", "7c8288"))
 
     # date window (dynamic)
     lines.append(text_layer("date", DATE_U[0], DATE_U[1], "{dd}", DATE_SIZE,
@@ -377,11 +380,11 @@ def compose_preview(plate, hand_alpha=1.0):
     for cap, _tag, val, cu, size_cap, size_val in READOUTS:
         x, y = REG_UNITS[cu]
         px = W / 2 + x * W / 512.0
-        f_cap = ImageFont.truetype(font_path, size_cap)
-        f_val = ImageFont.truetype(font_path, size_val)
-        d.text((px, W / 2 + (y + 10) * W / 512.0), val, font=f_val,
+        f_cap = ImageFont.truetype(font_path, int(round(size_cap * UI)))
+        f_val = ImageFont.truetype(font_path, int(round(size_val * UI)))
+        d.text((px, W / 2 + (y + 10 * UI) * W / 512.0), val, font=f_val,
                fill=(0xf4, 0xf6, 0xf8), anchor="mm")
-        d.text((px, W / 2 + (y - 26) * W / 512.0), cap, font=f_cap,
+        d.text((px, W / 2 + (y - 26 * UI) * W / 512.0), cap, font=f_cap,
                fill=(0x9a, 0xa0, 0xa6), anchor="mm")
 
     # date

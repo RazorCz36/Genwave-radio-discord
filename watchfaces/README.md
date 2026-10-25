@@ -29,10 +29,11 @@ WatchMaker Studio can open the same file on desktop (*File → Import .watch*).
 | 6 o'clock dial | **weather** — `{wtd}` (e.g. `12°C`) |
 | Date aperture | `{dd}` in a bundled Saira SemiBold |
 
-**Dial only, no bezel.** The plate is cropped at 0.82 of the case radius, so the carbon
-tachymeter bezel and its `PORSCHE 400 / 300 / 240 …` print are gone and the dial itself
-fills the screen (the whole face scales up by 286/234 ≈ 1.22). All unit constants derive
-from `DIAL_R`, so hands, registers and the date move with the crop automatically.
+**Dial only, no bezel.** The plate is cropped at 0.695 of the case radius: the carbon
+tachymeter bezel, its `PORSCHE 400 / 300 / 240 …` print *and* the big steel ring with the
+white rectangular markers are all gone. What is left is the dial's own fine minute track
+and everything inside it, so the face fills the screen. All unit constants derive from
+`DIAL_R`, so hands, registers, readouts and the date move with the crop automatically.
 
 **Registers are repainted, then re-printed.** Each sub-dial interior is wiped to a clean
 black disc (0.97 of its radius) and a regular 60-tick scale is drawn back procedurally —
@@ -43,6 +44,14 @@ cross the date aperture.
 The tick scale is pushed out to the rim so each caption has clear black under it, and the
 readouts are sized to still fit if WatchMaker draws text larger than the nominal
 `text_size` (`TEXT_SCALE=1.35 python3 mockup.py out.jpg` renders that pessimistic case).
+
+**Removed hands are rebuilt from the dial's mirror image.** The dial is symmetric about
+its vertical axis — the two upper registers are mirror images and the skeleton spokes
+repeat — so wherever a hand covered the plate the pixel is taken from its left-right
+mirror twin (`mirror_fill`). That keeps real, sharp detail in the patched area instead of
+the grey smear an interpolation leaves; only the few pixels whose mirror is also masked
+fall back to the angular fill. This is what removed the blurry patch that used to sit
+above the STEPS ring.
 
 **Hands are drawn, not cut out of the photo.** The first hand sprites were cut from the
 photograph along a straight swath, so each sprite kept an opaque, flat-edged rectangle
@@ -92,7 +101,7 @@ Whatever stays black is the property the converter destroys.
 
 **Asset sizes are locked to the XML.** Store faces do declare sizes that differ from the
 bitmap, but matching them costs nothing and removes one variable. The plate is 512 px and
-declared 512; each hand sprite is 346 / 472 / 508 px and declared at exactly that width.
+declared 512; each hand sprite is 404 / 530 / 510 px and declared at exactly that width.
 `build_watch.py` asserts this: every `path=` bitmap matches its declaration.
 
 The same reason killed `opacity="{abright} and 100 or 80"` on hands and date — this build
@@ -111,7 +120,8 @@ The dial is **the original photograph**, not a redraw: every hand was cut out as
 RGBA sprite, the plate behind it was reconstructed, and the printed date digit was
 erased so a real date can be drawn over the cream plate.
 
-* `build/plate5.py` — builds the exact swath of every hand from the measured geometry,
+* `build/plate5.py` — mirrors the clean half of the dial over each removed hand, builds
+  the exact swath of every hand from the measured geometry,
   fills it by angular interpolation around the dial centre and around each sub-dial
   centre (so the skeleton bridges continue *around* the removed hand instead of being
   smeared across it), flattens the black register interiors with a per-radius percentile,
@@ -140,7 +150,7 @@ python3 build_watch.py            # writes ../Carrera_Porsche963.watch
 
 ## Known deviations from the photo
 
-* The date window shows today's date in Saira SemiBold (text size 20) instead of the
+* The date window shows today's date in Saira SemiBold (text size 22) instead of the
   printed "8", so two-digit days fit the narrow aperture.
 * The three chronograph registers became battery / steps / weather readouts, as asked.
 * The hands are drawn in the photo's silhouette (two rails, dark openworked centre,

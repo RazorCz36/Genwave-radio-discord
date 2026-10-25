@@ -20,7 +20,8 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.environ.get("WATCH_SRC", os.path.join(HERE, "source", "cbu2010-ft6267.jpg"))
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/out/assets"
-CROP_FRAC = 0.82          # of the case radius: dial + minute track + a thin steel edge, no bezel
+CROP_FRAC = 0.695         # of the case radius: the dial keeps its own fine minute
+                          # track; the big marker ring and the bezel are gone
 SCALE = float(sys.argv[2]) if len(sys.argv) > 2 else 2.6
 
 CX, CY = 290.6, 535.4
@@ -49,7 +50,7 @@ def hand_poly(cx, cy, axis_deg, r_in, r_out, half_w, s=1.0, half_w_far=None):
     return np.array([a, b, c, d], np.int32)
 
 
-def hand_mask(h, w, cx, cy, margin=3.5):
+def hand_mask(h, w, cx, cy, margin=2.3):
     """Exact swath of every hand, sized from the measurements (+margin)."""
     m = np.zeros((h, w), np.uint8)
     for cfg in HANDS.values():
@@ -119,12 +120,35 @@ def polar_lerp(img, mask, cx, cy, r0, r1, srcmask=None, n=4096, rstep=0.6):
         nx = np.minimum(nxt[blk], 2 * n - 1)
         dp = (blk - pv).astype(np.float32)
         dn = (nx - blk).astype(np.float32)
-        tot = np.maximum(dp + dn, 1e-6)
-        wgt = (dp / tot)[:, None]
+        # nearest-biased weights: the copy stays close to the nearer side, so radial
+        # bridges cross the removed hand instead of dissolving into a grey smear
+        p3, p3n = dp ** 3, dn ** 3
+        tot = np.maximum(p3 + p3n, 1e-6)
+        wgt = (p3 / tot)[:, None]
         val = vv[pv % n] * (1.0 - wgt) + vv[nx % n] * wgt
         img[ys[write], xs[write]] = np.clip(val[write], 0, 255).astype(np.uint8)
         mask[ys[write], xs[write]] = 0
     return img
+
+
+def mirror_fill(img, mask, cx, min_gap=5):
+    """Rebuild masked pixels from their left-right mirror image.
+
+    The dial is symmetric about its vertical axis — the battery and steps registers are
+    mirror images and the skeleton spokes repeat — so what a removed hand covered can
+    usually be copied from the opposite side as *sharp, real* detail instead of an
+    interpolation.  Only pixels whose mirror is at least `min_gap` px clear of the mask
+    are taken; the rest falls through to the polar fill.
+    """
+    h, w = img.shape[:2]
+    dist = cv2.distanceTransform((mask == 0).astype(np.uint8), cv2.DIST_L2, 5)
+    ys, xs = np.where(mask > 0)
+    xm = np.round(2.0 * cx - xs).astype(int)
+    ok = (xm >= 0) & (xm < w)
+    ok &= dist[ys, np.clip(xm, 0, w - 1)] >= min_gap
+    img[ys[ok], xs[ok]] = img[ys[ok], xm[ok]]
+    mask[ys[ok], xs[ok]] = 0
+    return img, mask
 
 
 def flat_fill(img, mask, cx, cy, r0, r1, pct=30, n=2048, rstep=0.6):
@@ -344,6 +368,7 @@ def main():
     m = mask.copy()
     src = cv2.dilate(mask, np.ones((7, 7), np.uint8))     # never sample the hand rim
     work = a.copy()
+    work, m = mirror_fill(work, m, cx)
     for sx, sy, sr in REGS:
         work = flat_fill(work, m, sx * SCALE, sy * SCALE, 0.0, (sr - 9) * SCALE)
     for sx, sy, sr in REGS:
