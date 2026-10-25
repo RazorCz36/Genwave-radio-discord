@@ -20,6 +20,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.environ.get("WATCH_SRC", os.path.join(HERE, "source", "cbu2010-ft6267.jpg"))
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/out/assets"
+CROP_FRAC = 0.82          # of the case radius: dial + minute track + a thin steel edge, no bezel
 SCALE = float(sys.argv[2]) if len(sys.argv) > 2 else 2.6
 
 CX, CY = 290.6, 535.4
@@ -258,6 +259,31 @@ def clean_subdial(img, cx, cy, r_clean, seed=11, keep_rect=None):
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def print_ticks(img, cx, cy, r, n=60, skip=None):
+    """Redraw a clean printed scale on a cleaned sub-dial.
+
+    The photo's own scale is wiped by the clean pass (the removed register hand
+    used to cross it, leaving a bright blade behind), so the ticks are drawn
+    again -- perfectly regular, no ghosting.
+    """
+    from PIL import ImageDraw
+    pil = Image.fromarray(img)
+    d = ImageDraw.Draw(pil)
+    for i in range(n):
+        deg = (i * 360.0 / n) % 360.0          # 0 = 12 o'clock, clockwise
+        if skip and skip[0] <= deg <= skip[1]:
+            continue
+        a = math.radians(deg - 90.0)
+        major = (i % 5) == 0
+        r1 = r * (0.79 if major else 0.84)
+        r2 = r * 0.92
+        w = 3 if major else 2
+        d.line([(cx + r1 * math.cos(a), cy + r1 * math.sin(a)),
+                (cx + r2 * math.cos(a), cy + r2 * math.sin(a))],
+               fill=(196, 198, 200) if major else (150, 152, 155), width=w)
+    return np.asarray(pil).astype(np.uint8)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     img = Image.open(SRC).convert("RGB")
@@ -322,12 +348,16 @@ def main():
 
     keep = [int(273 * SCALE), int(670 * SCALE), int(309 * SCALE), int(713 * SCALE)]
     for i, (sx, sy, sr) in enumerate(REGS):
-        out = clean_subdial(out, sx * SCALE, sy * SCALE, 56.0 * SCALE, seed=11 + i,
+        out = clean_subdial(out, sx * SCALE, sy * SCALE, 0.97 * sr * SCALE, seed=11 + i,
                             keep_rect=(keep if i == 2 else None))
+        # the 6 o'clock register keeps its date aperture: no ticks across the window
+        out = print_ticks(out, sx * SCALE, sy * SCALE, sr * SCALE,
+                          skip=(78.0, 102.0) if i == 2 else None)
 
     Image.fromarray(out).save(os.path.join(OUT, "plate_full.png"))
-    size = int(round(case_r * 2))
-    x0 = int(round(cx - case_r)); y0 = int(round(cy - case_r))
+    size = int(round(case_r * 2 * CROP_FRAC))
+    half = size / 2.0
+    x0 = int(round(cx - half)); y0 = int(round(cy - half))
     crop = out[y0:y0 + size, x0:x0 + size]
     Image.fromarray(crop).save(os.path.join(OUT, "plate_crop.png"))
     print("plate", crop.shape, "scale", SCALE)

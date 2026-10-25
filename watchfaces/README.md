@@ -29,6 +29,17 @@ WatchMaker Studio can open the same file on desktop (*File → Import .watch*).
 | 6 o'clock dial | **weather** — `{wtd}` (e.g. `12°C`) |
 | Date aperture | `{dd}` in a bundled Saira SemiBold |
 
+**Dial only, no bezel.** The plate is cropped at 0.82 of the case radius, so the carbon
+tachymeter bezel and its `PORSCHE 400 / 300 / 240 …` print are gone and the dial itself
+fills the screen (the whole face scales up by 286/234 ≈ 1.22). All unit constants derive
+from `DIAL_R`, so hands, registers and the date move with the crop automatically.
+
+**Registers are repainted, then re-printed.** Each sub-dial interior is wiped to a clean
+black disc (0.97 of its radius) and a regular 60-tick scale is drawn back procedurally —
+the photo's own scale sat under the removed register hands and carried a bright "erased
+hand" blade across the top of every ring. The 6 o'clock ring skips the ticks that would
+cross the date aperture.
+
 The clean disc inside each register reaches 56 source px (50 units) — the printed scale
 ring is pushed out to the rim so the caption has clear black under it, and the readouts are
 sized to still fit if WatchMaker draws text larger than the nominal `text_size`
