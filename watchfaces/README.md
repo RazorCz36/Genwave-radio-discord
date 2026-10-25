@@ -44,10 +44,24 @@ itself. Assets are plain, lowercase, extension-bearing resource names (`dial.png
 must match `[a-z0-9_]+` — the old `.img1.png` dot-names are exactly the kind of thing that
 gets dropped in conversion.
 
-`WatchFaceTest.watch` is a two-layer probe (one image + one text). Send it to the watch;
-if its picture shows up, image layers survive the conversion and a failing face is a
-packaging problem. If it is black with only the time, the converter is dropping every
-bitmap and no `.watch` file can work around it.
+**The plate is an opaque JPEG.** A first probe face — 512 px, opaque RGB PNG, one image
+and one text layer — converted and displayed perfectly on a Galaxy Watch 6 Classic, while
+this face's RGBA PNG plate and hand sprites vanished. So the conversion handles at least
+one image; the question is which property it chokes on. `dial.jpg` is therefore fully
+opaque (corners blacked out, the round screen clips them) and 512 px at ~97 KB.
+
+`WatchFaceTest.watch` narrows that down in one send:
+
+| Mark | Layer | Property under test |
+| --- | --- | --- |
+| background | the real 362 KB RGBA plate, 512 px | survives at all? |
+| **A** | RGB PNG, 120 px | control |
+| **B** | RGBA PNG with transparency | alpha channel |
+| **D** | RGBA PNG, `rotation="{drm}"` | rotating image layers |
+| **E** | JPEG, 120 px | file format |
+| **F** | text, bundled font | font-backed text |
+
+Whatever stays black is the property the converter destroys.
 
 **Asset sizes are locked to the XML.** Store faces do declare sizes that differ from the
 bitmap, but matching them costs nothing and removes one variable. The plate is 512 px and

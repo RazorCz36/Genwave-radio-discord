@@ -73,8 +73,16 @@ def make_plate():
     edge = px / 2.0
     alpha = np.clip((edge - r) / 1.6, 0, 1) * 255.0
 
-    rgba = np.dstack([a, alpha.astype(np.uint8)])
-    Image.fromarray(rgba, "RGBA").save(os.path.join(WORK, "images", "dial.png"))
+    # Opaque RGB, saved as JPEG.
+    # Two suspects were left for the Watch Face Format conversion dropping every
+    # bitmap in this face but carrying the probe face's picture: the transparent
+    # alpha channel (the probe image was opaque) and the file size (the probe was
+    # 9 KB, this plate 362 KB).  An opaque 512 px JPEG removes both at once; the
+    # round screen clips the corners anyway.
+    a = a.copy()
+    a[alpha < 128] = 0
+    Image.fromarray(a, "RGB").save(os.path.join(WORK, "images", "dial.jpg"),
+                                   quality=92, subsampling=0)
 
     return px
 
@@ -194,7 +202,7 @@ def watch_xml():
         'ucolor_default="ffffff" ind_loc="bc" ind_bg="Y" hotword_loc="bc" hotword_bg="N">')
 
     # background plate: bright version for bright mode, lifted version for ambient
-    lines.append(img_layer("dial", "dial.png", 512, opacity="100"))
+    lines.append(img_layer("dial", "dial.jpg", 512, opacity="100"))
 
     # sub-dial readouts: battery / steps / weather replace the chrono registers.
     # A soft black disc knocks the printed 1-12 / 5-30 scales back so the numbers read.
@@ -233,6 +241,9 @@ def compose_preview(plate, hand_alpha=1.0):
     W = 512
     bg = Image.open(os.path.join(WORK, "images", plate)).convert("RGBA").resize(
         (W, W), Image.LANCZOS)
+    flat = Image.new("RGBA", (W, W), (0, 0, 0, 255))
+    flat.alpha_composite(bg)
+    bg = flat
     base = Image.new("RGBA", (W, W), (0, 0, 0, 255))
     base.alpha_composite(bg)
 
@@ -275,11 +286,11 @@ def compose_preview(plate, hand_alpha=1.0):
 
 def make_preview():
     """Bright preview + an ambient preview that mirrors what the watch shows in dim mode."""
-    bright = compose_preview("dial.png", 1.0)
+    bright = compose_preview("dial.jpg", 1.0)
     bright.convert("RGB").save(os.path.join(WORK, "preview.jpg"), quality=92)
 
     # ambient: lifted plate, hands at 80 %, then the system dimming on top
-    dim = compose_preview("dial.png", 1.0).convert("RGB").point(lambda v: int(v * 0.62))
+    dim = compose_preview("dial.jpg", 1.0).convert("RGB").point(lambda v: int(v * 0.62))
     dim.save(os.path.join(WORK, "preview_dim.jpg"), quality=92)
 
 
@@ -338,7 +349,7 @@ def main():
 
     print("[3/6] trimming hand sprites")
     for stale in (".img1.png", ".img2.png", ".img3.png", ".img4.png", ".img5.png",
-                  ".img6.png", ".img7.png", ".img8.png"):
+                  ".img6.png", ".img7.png", ".img8.png", "dial.png"):
         f = os.path.join(WORK, "images", stale)
         if os.path.exists(f):
             os.remove(f)
