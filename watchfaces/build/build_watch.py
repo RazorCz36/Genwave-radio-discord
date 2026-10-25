@@ -46,7 +46,7 @@ REGS = [(186.0, 535.5, 75.0), (398.5, 535.5, 75.0), (292.0, 641.0, 70.0)]
 # date aperture centre (source px) -> units relative to the dial centre
 DATE_CX, DATE_CY = 291.5, 691.5
 DATE_U = ((DATE_CX - CX) / CASE_R * 256.0, (DATE_CY - CY) / CASE_R * 256.0)
-DATE_FONT = "SairaSemiBold"
+DATE_FONT = "sairasemibold"   # WFF-safe resource name (lowercase)
 DATE_SIZE = 20
 
 # register centres in units, relative to the dial centre
@@ -74,13 +74,8 @@ def make_plate():
     alpha = np.clip((edge - r) / 1.6, 0, 1) * 255.0
 
     rgba = np.dstack([a, alpha.astype(np.uint8)])
-    Image.fromarray(rgba, "RGBA").save(os.path.join(WORK, "images", ".img1.png"))
+    Image.fromarray(rgba, "RGBA").save(os.path.join(WORK, "images", "dial.png"))
 
-    # ambient plate: the watch dims everything in dim mode, so ship a lifted copy
-    f = a.astype(np.float32) / 255.0
-    dim = np.clip((f ** 0.55) * 255.0, 0, 255).astype(np.uint8)
-    dim_im = Image.fromarray(np.dstack([dim, alpha.astype(np.uint8)]), "RGBA")
-    dim_im.save(os.path.join(WORK, "images", ".img2.png"))
     return px
 
 
@@ -150,8 +145,8 @@ def fit_hands():
     we want that to equal the measured radius, which fixes W. Once W is known the
     bitmap is resampled to exactly W px, so declaration and texture agree.
     """
-    for kind, img in (("hour", ".img3.png"), ("minute", ".img4.png"),
-                      ("chrono", ".img5.png")):
+    for kind, img in (("hour", "hand_hour.png"), ("minute", "hand_minute.png"),
+                      ("chrono", "hand_second.png")):
         name = SPRITE_NAME[kind]
         target = int(round(layer_w(kind)))
         side, ext = SPRITE[name]
@@ -199,10 +194,7 @@ def watch_xml():
         'ucolor_default="ffffff" ind_loc="bc" ind_bg="Y" hotword_loc="bc" hotword_bg="N">')
 
     # background plate: bright version for bright mode, lifted version for ambient
-    lines.append(img_layer("dial", ".img1.png", 512, opacity="100", extra='').replace(
-        'display="bd"', 'display="b"'))
-    lines.append(img_layer("dial dim", ".img2.png", 512, opacity="100").replace(
-        'display="bd"', 'display="d"'))
+    lines.append(img_layer("dial", "dial.png", 512, opacity="100"))
 
     # sub-dial readouts: battery / steps / weather replace the chrono registers.
     # A soft black disc knocks the printed 1-12 / 5-30 scales back so the numbers read.
@@ -218,9 +210,9 @@ def watch_xml():
                             "101215", "101215"))
 
     # hands last so they pass over the dial printing
-    lines.append(img_layer("hour hand", ".img3.png", int(round(layer_w("hour"))), rot="{drh}"))
-    lines.append(img_layer("minute hand", ".img4.png", int(round(layer_w("minute"))), rot="{drm}"))
-    lines.append(img_layer("chrono seconds", ".img5.png", int(round(layer_w("chrono"))), rot="{drss}"))
+    lines.append(img_layer("hour hand", "hand_hour.png", int(round(layer_w("hour"))), rot="{drh}"))
+    lines.append(img_layer("minute hand", "hand_minute.png", int(round(layer_w("minute"))), rot="{drm}"))
+    lines.append(img_layer("chrono seconds", "hand_second.png", int(round(layer_w("chrono"))), rot="{drss}"))
 
     lines.append('</Watch>')
     return "\n".join(lines) + "\n"
@@ -246,7 +238,7 @@ def compose_preview(plate, hand_alpha=1.0):
 
     # sub-dial readouts under the hands, same geometry as the layers
     d = ImageDraw.Draw(base)
-    font_path = os.path.join(WORK, "fonts", "SairaSemiBold.ttf")
+    font_path = os.path.join(WORK, "fonts", "sairasemibold.ttf")
     for cap, _tag, val, cu, size_cap, size_val in READOUTS:
         x, y = REG_UNITS[cu]
         px = W / 2 + x * W / 512.0
@@ -275,19 +267,19 @@ def compose_preview(plate, hand_alpha=1.0):
         layer.paste(im, ((W - s) // 2, (W - s) // 2), im)
         base.alpha_composite(layer)
 
-    place(".img3.png", layer_w("hour"), 300)
-    place(".img4.png", layer_w("minute"), 60)
-    place(".img5.png", layer_w("chrono"), 42)
+    place("hand_hour.png", layer_w("hour"), 300)
+    place("hand_minute.png", layer_w("minute"), 60)
+    place("hand_second.png", layer_w("chrono"), 42)
     return base
 
 
 def make_preview():
     """Bright preview + an ambient preview that mirrors what the watch shows in dim mode."""
-    bright = compose_preview(".img1.png", 1.0)
+    bright = compose_preview("dial.png", 1.0)
     bright.convert("RGB").save(os.path.join(WORK, "preview.jpg"), quality=92)
 
     # ambient: lifted plate, hands at 80 %, then the system dimming on top
-    dim = compose_preview(".img2.png", 0.80).convert("RGB").point(lambda v: int(v * 0.62))
+    dim = compose_preview("dial.png", 1.0).convert("RGB").point(lambda v: int(v * 0.62))
     dim.save(os.path.join(WORK, "preview_dim.jpg"), quality=92)
 
 
@@ -341,16 +333,17 @@ def main():
     print("[2/6] building plate layers + bundled font")
     os.makedirs(os.path.join(WORK, "fonts"), exist_ok=True)
     shutil.copy(os.path.join(HERE, "fonts", "SairaSemi.ttf"),
-                os.path.join(WORK, "fonts", "SairaSemiBold.ttf"))
+                os.path.join(WORK, "fonts", "sairasemibold.ttf"))
     make_plate()
 
     print("[3/6] trimming hand sprites")
-    for stale in (".img6.png", ".img7.png", ".img8.png"):
+    for stale in (".img1.png", ".img2.png", ".img3.png", ".img4.png", ".img5.png",
+                  ".img6.png", ".img7.png", ".img8.png"):
         f = os.path.join(WORK, "images", stale)
         if os.path.exists(f):
             os.remove(f)
-    for src, dst in [("hand_hour.png", ".img3.png"), ("hand_minute.png", ".img4.png"),
-                     ("hand_chrono.png", ".img5.png")]:
+    for src, dst in [("hand_hour.png", "hand_hour.png"), ("hand_minute.png", "hand_minute.png"),
+                     ("hand_chrono.png", "hand_second.png")]:
         SPRITE[src] = trim_hand(os.path.join(WORK, src), os.path.join(WORK, "images", dst))
         print("   ", src, SPRITE[src])
 

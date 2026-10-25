@@ -35,17 +35,25 @@ sits on plain black in the centre of its ring — no overlay disc is used. The 6
 repaint deliberately stops short of the date aperture so the printed cream window and
 its black frame survive.
 
-**Bright vs ambient.** The face ships two plates: `.img1.png` (the photo, `display="b"`)
-and `.img2.png`, a gamma-lifted copy (`display="d"`). Watches darken everything in
-ambient mode, so the dim plate is pre-brightened — without it the face reads as almost
-black on the wrist.
+**One plate, one mode.** Wear OS 6 (One UI 8) no longer runs legacy WatchMaker faces: the
+phone app converts a `.watch` to Google's **Watch Face Format (WFF)** on *send to watch*.
+The converter is lossy and a bright/dim pair of plates doubles the work it has to do, so
+the face ships a single `dial.png` with `display="bd"` and lets the platform render ambient
+itself. Assets are plain, lowercase, extension-bearing resource names (`dial.png`,
+`hand_hour.png`, `hand_second.png`, `fonts/sairasemibold.ttf`) because WFF resource names
+must match `[a-z0-9_]+` — the old `.img1.png` dot-names are exactly the kind of thing that
+gets dropped in conversion.
 
-**Asset sizes are locked to the XML.** WatchMaker on the phone rescales any bitmap to the
-layer's `width`/`height`, but the watch-side renderer only draws a texture whose pixel
-size already equals the declared size — anything else silently disappears (black dial,
-no hands, only the text layers). So the plate is 512 px and declared 512, and each hand
-sprite is resampled to exactly the integer layer width it is declared with (265 / 367 /
-402 px). `build_watch.py` asserts this: every `path=` bitmap matches its declaration.
+`WatchFaceTest.watch` is a two-layer probe (one image + one text). Send it to the watch;
+if its picture shows up, image layers survive the conversion and a failing face is a
+packaging problem. If it is black with only the time, the converter is dropping every
+bitmap and no `.watch` file can work around it.
+
+**Asset sizes are locked to the XML.** Store faces do declare sizes that differ from the
+bitmap, but matching them costs nothing and removes one variable. The plate is 512 px and
+declared 512; each hand sprite is resampled to exactly the integer layer width it is
+declared with (265 / 367 / 402 px). `build_watch.py` asserts this: every `path=` bitmap
+matches its declaration.
 
 The same reason killed `opacity="{abright} and 100 or 80"` on hands and date — this build
 resolves the expression to nothing and hides the layer, so all opacities are plain `100`.

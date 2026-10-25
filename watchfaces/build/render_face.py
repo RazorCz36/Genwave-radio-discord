@@ -56,7 +56,9 @@ def render(watch_path, size=512, hh=10, mm=9, ss=0.0, swh=0, swm=0, sws=0.0,
         "dd": day,
         "abright": 1 if bright else 0,
     }
-    texts = {"{dd}": str(day), "{blp}": blp, "{ssc}": ssc, "{wtd}": wtd}
+    texts = {"{dd}": str(day), "{blp}": blp, "{ssc}": ssc, "{wtd}": wtd,
+             "{dh}": str(hh), "{dh23}": str(hh), "{dh12}": str(hh % 12 or 12),
+             "{dm}": f"{mm:02d}", "{dss}": "00"}
     k = size / 512.0
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 255))
 
@@ -99,7 +101,7 @@ def render(watch_path, size=512, hh=10, mm=9, ss=0.0, swh=0, swm=0, sws=0.0,
             for k2, v2 in texts.items():
                 txt = txt.replace(k2, v2)
             fname = layer.get("font")
-            fpath = os.path.join(root_dir, "fonts", fname + ".ttf")
+            fpath = os.path.join(root_dir, "fonts", fname + ".ttf") if fname else ""
             fsize = int(round(float(layer.get("text_size", "20")) * k))
             font = ImageFont.truetype(fpath, fsize) if os.path.exists(fpath) else ImageFont.load_default()
             col = layer.get("color", "ffffff")
