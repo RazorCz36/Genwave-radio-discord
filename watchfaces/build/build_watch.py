@@ -71,10 +71,14 @@ def make_plate():
 
     rgba = np.dstack([a, alpha.astype(np.uint8)])
     Image.fromarray(rgba, "RGBA").save(os.path.join(WORK, "images", ".img1.png"))
-    # no separate dim plate: WatchMaker's ambient mode dims the same layer
-    stale = os.path.join(WORK, "images", ".img2.png")
-    if os.path.exists(stale):
-        os.remove(stale)
+
+    # ambient plate: the watch dims everything in dim mode, so ship a lifted copy
+    f = a.astype(np.float32) / 255.0
+    dim = np.clip((f ** 0.55) * 255.0, 0, 255).astype(np.uint8)
+    dim_im = Image.fromarray(np.dstack([dim, alpha.astype(np.uint8)]), "RGBA")
+    # ambient mode is low-detail: half resolution keeps the package small
+    dim_im = dim_im.resize((px // 2, px // 2), Image.LANCZOS)
+    dim_im.save(os.path.join(WORK, "images", ".img2.png"))
     return px
 
 
@@ -136,8 +140,22 @@ SPRITE_NAME = {"hour": "hand_hour.png", "minute": "hand_minute.png",
 
 
 # ---------------------------------------------------------------- xml
+def text_layer(name, x, y, text, size, color, color_dim, opacity="100", extra=""):
+    return (f'    <Layer name="{escape(name)}" type="text" x="{x:.2f}" y="{y:.2f}" gyro="0" '
+            f'rotation="0" skew_x="0" skew_y="0" opacity="{opacity}" alignment="cc" '
+            f'text="{escape(text)}" text_size="{size}" anim_scale_x="100" anim_scale_y="100" '
+            f'font="{DATE_FONT}" transform="n" color="{color}" color_dim="{color_dim}" '
+            f'display="bd"{extra}/>')
+
+
+def shape_layer(name, x, y, w, h, color, opacity):
+    return (f'    <Layer name="{escape(name)}" type="shape" x="{x:.2f}" y="{y:.2f}" gyro="0" '
+            f'rotation="0" skew_x="0" skew_y="0" opacity="{opacity}" alignment="cc" '
+            f'shape="Circle" width="{w:.1f}" height="{h:.1f}" color="{color}" display="bd"/>')
+
+
 def watch_xml():
-    def img_layer(name, path, size, rot="0", opacity='{abright} and 100 or 55', extra=""):
+    def img_layer(name, path, size, rot="0", opacity='{abright} and 100 or 80', extra=""):
         return (f'    <Layer name="{escape(name)}" type="image" x="0" y="0" gyro="0" '
                 f'rotation="{rot}" skew_x="0" skew_y="0" opacity="{opacity}" alignment="cc" '
                 f'path="{path}" width="{size}" height="{size}" color="ffffff" display="bd"{extra}/>')
@@ -156,89 +174,109 @@ def watch_xml():
         'shape="R" author="Arena Agent" web_link="" bg_color="000000" '
         'ucolor_default="ffffff" ind_loc="bc" ind_bg="Y" hotword_loc="bc" hotword_bg="N">')
 
-    # background plate
-    lines.append(img_layer("dial", ".img1.png", 512, opacity="100"))
+    # background plate: bright version for bright mode, lifted version for ambient
+    lines.append(img_layer("dial", ".img1.png", 512, opacity="100", extra='').replace(
+        'display="bd"', 'display="b"'))
+    lines.append(img_layer("dial dim", ".img2.png", 512, opacity="100").replace(
+        'display="bd"', 'display="d"'))
 
-    # hands: hour, minute, chrono seconds
-    h = HANDS
+    # sub-dial readouts: battery / steps / weather replace the chrono registers.
+    # A soft black disc knocks the printed 1-12 / 5-30 scales back so the numbers read.
+    READOUTS = [
+        # caption, tag, register index, caption size, value size, disc w, disc h, disc y offset
+        ("BATTERY", "{blp}", 0, 9, 23, 96, 96, 0),
+        ("STEPS", "{ssc}", 1, 9, 20, 96, 96, 0),
+        ("WEATHER", "{wtd}", 2, 8, 18, 78, 46, -24),
+    ]
+    for cap, val, cu, size_cap, size_val, dw, dh, dy in READOUTS:
+        x, y = REG_UNITS[cu]
+        lines.append(shape_layer(f"{cap.lower()} plate", x, y + dy, dw, dh, "050608", 72))
+        lines.append(text_layer(f"{cap.lower()} value", x, y + dy + (6 if dy == 0 else 1),
+                                val, size_val, "f4f6f8", "c2c7cc"))
+        lines.append(text_layer(f"{cap.lower()} label", x, y + dy - (26 if dy == 0 else 16),
+                                cap, size_cap, "9aa0a6", "71777d"))
+
+    # date window (dynamic)
+    lines.append(text_layer("date", DATE_U[0], DATE_U[1], "{dd}", DATE_SIZE,
+                            "101215", "101215", opacity="{abright} and 100 or 85"))
+
+    # hands last so they pass over the dial printing
     lines.append(img_layer("hour hand", ".img3.png", round(layer_w("hour"), 1), rot="{drh}"))
     lines.append(img_layer("minute hand", ".img4.png", round(layer_w("minute"), 1), rot="{drm}"))
     lines.append(img_layer("chrono seconds", ".img5.png", round(layer_w("chrono"), 1), rot="{drss}"))
-
-    # register hands — positions come straight from the photo
-    lx, ly = REG_UNITS[0]
-    rx, ry = REG_UNITS[1]
-    bx, by = REG_UNITS[2]
-    for name, path, x, y, size, rot in [
-        ("chrono hours", ".img6.png", lx, ly, layer_w("reg", 75.0), "({swh}%12)*30 + {swm}*0.5"),
-        ("chrono minutes", ".img7.png", rx, ry, layer_w("reg2", 75.0), "({swm}%30)*12 + {sws}*0.2"),
-        ("seconds", ".img8.png", bx, by, layer_w("regb", 70.0), "{drss}"),
-    ]:
-        lines.append(
-            f'    <Layer name="{escape(name)}" type="image" x="{x:.2f}" y="{y:.2f}" gyro="0" '
-            f'rotation="{rot}" skew_x="0" skew_y="0" opacity="{{abright}} and 100 or 55" '
-            f'alignment="cc" path="{path}" width="{size:.1f}" height="{size:.1f}" '
-            f'color="ffffff" display="bd"/>')
-
-    # date window (dynamic)
-    lines.append(
-        f'    <Layer name="date" type="text" x="{DATE_U[0]:.1f}" y="{DATE_U[1]:.1f}" gyro="0" '
-        f'rotation="0" skew_x="0" skew_y="0" opacity="{{abright}} and 100 or 75" '
-        f'alignment="cc" text="{{dd}}" text_size="{DATE_SIZE}" anim_scale_x="100" '
-        f'anim_scale_y="100" font="{DATE_FONT}" transform="n" color="101215" '
-        f'color_dim="101215" display="bd"/>')
 
     lines.append('</Watch>')
     return "\n".join(lines) + "\n"
 
 
 # ---------------------------------------------------------------- preview
-def make_preview():
-    """Render an 11:10 style preview from the assets."""
+READOUTS = [
+    # caption, sample value, register index, caption size, value size, disc w, h, dy
+    ("BATTERY", "87%", 0, 9, 23, 96, 96, 0),
+    ("STEPS", "6420", 1, 9, 20, 96, 96, 0),
+    ("WEATHER", "12\u00b0C", 2, 8, 18, 78, 46, -24),
+]
+
+
+def compose_preview(plate, hand_alpha=1.0):
+    """Composite the face the way WatchMaker does, from the packaged assets."""
+    from PIL import ImageDraw, ImageFont
     W = 512
-    bg = Image.open(os.path.join(WORK, "images", ".img1.png")).convert("RGBA").resize((W, W), Image.LANCZOS)
+    bg = Image.open(os.path.join(WORK, "images", plate)).convert("RGBA").resize(
+        (W, W), Image.LANCZOS)
     base = Image.new("RGBA", (W, W), (0, 0, 0, 255))
     base.alpha_composite(bg)
 
+    # sub-dial readouts under the hands, same geometry as the layers
+    d = ImageDraw.Draw(base)
+    font_path = os.path.join(WORK, "fonts", "SairaSemiBold.ttf")
+    for cap, val, cu, size_cap, size_val, dw, dh, dy in READOUTS:
+        x, y = REG_UNITS[cu]
+        px = W / 2 + x * W / 512.0
+        py = W / 2 + (y + dy) * W / 512.0
+        disc = Image.new("RGBA", (W, W), (0, 0, 0, 0))
+        ImageDraw.Draw(disc).ellipse(
+            [px - dw * W / 1024, py - dh * W / 1024, px + dw * W / 1024, py + dh * W / 1024],
+            fill=(5, 6, 8, int(255 * 0.72)))
+        base.alpha_composite(disc)
+        f_cap = ImageFont.truetype(font_path, size_cap)
+        f_val = ImageFont.truetype(font_path, size_val)
+        d.text((px, py + (6 if dy == 0 else 1)), val, font=f_val,
+               fill=(0xf4, 0xf6, 0xf8), anchor="mm")
+        d.text((px, py - (26 if dy == 0 else 16)), cap, font=f_cap,
+               fill=(0x9a, 0xa0, 0xa6), anchor="mm")
+
+    # date
+    f = ImageFont.truetype(font_path, DATE_SIZE)
+    d.text((W / 2 + DATE_U[0] * W / 512.0, W / 2 + DATE_U[1] * W / 512.0), "8",
+           font=f, fill=(0x10, 0x12, 0x15), anchor="mm")
+
+    # hands
     def place(path, size, angle):
-        im = Image.open(path).convert("RGBA")
+        im = Image.open(os.path.join(WORK, "images", path)).convert("RGBA")
         s = max(1, int(round(size * W / 512.0)))
         im = im.resize((s, s), Image.LANCZOS)
+        if hand_alpha < 1.0:
+            a = im.getchannel("A").point(lambda v: int(v * hand_alpha))
+            im.putalpha(a)
         im = im.rotate(-angle, resample=Image.BICUBIC, expand=False)
         layer = Image.new("RGBA", (W, W), (0, 0, 0, 0))
         layer.paste(im, ((W - s) // 2, (W - s) // 2), im)
         base.alpha_composite(layer)
 
-    place(os.path.join(WORK, "images", ".img3.png"), layer_w("hour"), 300)
-    place(os.path.join(WORK, "images", ".img4.png"), layer_w("minute"), 60)
-    place(os.path.join(WORK, "images", ".img5.png"), layer_w("chrono"), 42)
+    place(".img3.png", layer_w("hour"), 300)
+    place(".img4.png", layer_w("minute"), 60)
+    place(".img5.png", layer_w("chrono"), 42)
+    return base
 
-    for path, (x, y), size, ang in [
-        (".img6.png", REG_UNITS[0], layer_w("reg", 75.0), 0),
-        (".img7.png", REG_UNITS[1], layer_w("reg2", 75.0), 0),
-        (".img8.png", REG_UNITS[2], layer_w("regb", 70.0), 0),
-    ]:
-        im = Image.open(os.path.join(WORK, "images", path)).convert("RGBA")
-        s = max(1, int(round(size * W / 512.0)))
-        im = im.resize((s, s), Image.LANCZOS)
-        if ang:
-            im = im.rotate(-ang, resample=Image.BICUBIC, expand=False)
-        cx = int(W / 2 + x * W / 512.0)
-        cy = int(W / 2 + y * W / 512.0)
-        tmp = Image.new("RGBA", (W, W), (0, 0, 0, 0))
-        tmp.paste(im, (cx - s // 2, cy - s // 2), im)
-        base.alpha_composite(tmp)
 
-    # live date, drawn exactly like the text layer
-    from PIL import ImageDraw, ImageFont
-    d = ImageDraw.Draw(base)
-    f = ImageFont.truetype(os.path.join(WORK, "fonts", "SairaSemiBold.ttf"), DATE_SIZE)
-    cx = W / 2 + DATE_U[0] * W / 512.0
-    cy = W / 2 + DATE_U[1] * W / 512.0
-    d.text((cx, cy), "8", font=f, fill=(0x10, 0x12, 0x15), anchor="mm", embedded_color=False)
+def make_preview():
+    """Bright preview + an ambient preview that mirrors what the watch shows in dim mode."""
+    bright = compose_preview(".img1.png", 1.0)
+    bright.convert("RGB").save(os.path.join(WORK, "preview.jpg"), quality=92)
 
-    base.convert("RGB").save(os.path.join(WORK, "preview.jpg"), quality=92)
-    dim = base.convert("RGB").point(lambda v: int(v * 0.55))
+    # ambient: lifted plate, hands at 80 %, then the system dimming on top
+    dim = compose_preview(".img2.png", 0.80).convert("RGB").point(lambda v: int(v * 0.62))
     dim.save(os.path.join(WORK, "preview_dim.jpg"), quality=92)
 
 
@@ -274,9 +312,12 @@ def main():
     make_plate()
 
     print("[3/6] trimming hand sprites")
+    for stale in (".img6.png", ".img7.png", ".img8.png"):
+        f = os.path.join(WORK, "images", stale)
+        if os.path.exists(f):
+            os.remove(f)
     for src, dst in [("hand_hour.png", ".img3.png"), ("hand_minute.png", ".img4.png"),
-                     ("hand_chrono.png", ".img5.png"), ("reg_hand_red.png", ".img6.png"),
-                     ("reg_hand_red2.png", ".img7.png"), ("reg_hand_steel.png", ".img8.png")]:
+                     ("hand_chrono.png", ".img5.png")]:
         SPRITE[src] = trim_hand(os.path.join(WORK, src), os.path.join(WORK, "images", dst))
         print("   ", src, SPRITE[src])
 

@@ -25,17 +25,25 @@ def unpack(watch_path):
     return d
 
 
-def eval_expr(expr, tags):
-    e = expr
-    for k, v in tags.items():
-        e = e.replace("{" + k + "}", "(" + repr(float(v)) + ")")
+def _arith(e):
     if not re.fullmatch(r"[0-9eE+\-*/().%\s]+", e):
-        raise ValueError(f"cannot evaluate rotation expression: {expr!r}")
+        raise ValueError(f"cannot evaluate expression: {e!r}")
     return float(eval(e, {"__builtins__": {}}, {}))
 
 
+def eval_expr(expr, tags):
+    """Evaluate the small subset of Lua expressions used by the face."""
+    e = expr
+    for k, v in tags.items():
+        e = e.replace("{" + k + "}", "(" + repr(float(v)) + ")")
+    m = re.fullmatch(r"\s*(.+?)\s+and\s+(.+?)\s+or\s+(.+?)\s*", e)
+    if m:
+        return _arith(m.group(2)) if _arith(m.group(1)) else _arith(m.group(3))
+    return _arith(e)
+
+
 def render(watch_path, size=512, hh=10, mm=9, ss=0.0, swh=0, swm=0, sws=0.0,
-           day=8, bright=True):
+           day=8, bright=True, blp="87%", ssc="6420", wtd="12\u00b0C"):
     root_dir = unpack(watch_path)
     root = ET.parse(os.path.join(root_dir, "watch.xml")).getroot()
 
@@ -48,11 +56,17 @@ def render(watch_path, size=512, hh=10, mm=9, ss=0.0, swh=0, swm=0, sws=0.0,
         "dd": day,
         "abright": 1 if bright else 0,
     }
+    texts = {"{dd}": str(day), "{blp}": blp, "{ssc}": ssc, "{wtd}": wtd}
     k = size / 512.0
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 255))
 
     for layer in root:
         typ = layer.get("type")
+        disp = layer.get("display", "bd")
+        if bright and "b" not in disp:
+            continue
+        if (not bright) and "d" not in disp:
+            continue
         x = float(eval_expr(layer.get("x", "0"), tags)) * k
         y = float(eval_expr(layer.get("y", "0"), tags)) * k
         cx, cy = size / 2 + x, size / 2 + y
@@ -64,11 +78,26 @@ def render(watch_path, size=512, hh=10, mm=9, ss=0.0, swh=0, swm=0, sws=0.0,
             rot = eval_expr(layer.get("rotation", "0"), tags)
             if rot % 360:
                 src = src.rotate(-rot, resample=Image.BICUBIC, expand=False)
+            op = float(eval_expr(layer.get("opacity", "100"), tags)) / 100.0
+            if op < 1.0:
+                src.putalpha(src.getchannel("A").point(lambda v: int(v * op)))
             canvas.alpha_composite(src, (int(round(cx - w / 2)), int(round(cy - w / 2))))
+
+        elif typ == "shape":
+            w = float(layer.get("width", "0")) * k
+            h = float(layer.get("height", "0")) * k
+            col = layer.get("color", "000000")
+            rgb = tuple(int(col[i:i + 2], 16) for i in (0, 2, 4))
+            op = float(layer.get("opacity", "100")) / 100.0
+            lay = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            ImageDraw.Draw(lay).ellipse([cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2],
+                                        fill=rgb + (int(255 * op),))
+            canvas.alpha_composite(lay)
 
         elif typ == "text":
             txt = layer.get("text", "")
-            txt = txt.replace("{dd}", str(day))
+            for k2, v2 in texts.items():
+                txt = txt.replace(k2, v2)
             fname = layer.get("font")
             fpath = os.path.join(root_dir, "fonts", fname + ".ttf")
             fsize = int(round(float(layer.get("text_size", "20")) * k))

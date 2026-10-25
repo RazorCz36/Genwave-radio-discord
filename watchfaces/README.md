@@ -24,13 +24,21 @@ WatchMaker Studio can open the same file on desktop (*File → Import .watch*).
 | --- | --- |
 | Hour / minute hands | `{drh}` / `{drm}` |
 | Central red chronograph seconds | `{drss}` (smooth) |
-| 9 o'clock register — elapsed chrono **hours** (12 h) | `({swh}%12)*30 + {swm}*0.5` |
-| 3 o'clock register — elapsed chrono **minutes** (30 min) | `({swm}%30)*12 + {sws}*0.2` |
-| 6 o'clock register — running seconds | `{drss}` |
-| Date aperture | text layer `{dd}`, Saira SemiBold, bundled |
+| 9 o'clock dial | **battery** — `{blp}` (e.g. `87%`) |
+| 3 o'clock dial | **steps** — `{ssc}` |
+| 6 o'clock dial | **weather** — `{wtd}` (e.g. `12°C`) |
+| Date aperture | `{dd}` in a bundled Saira SemiBold |
 
-Hands drop to 55 % opacity in ambient mode; the dial is a single full-resolution
-image, dimmed by the system in dim mode.
+The three small dials have a soft black disc under the readout so the numbers are
+readable on top of the printed 1-12 / 5-30 scales.
+
+**Bright vs ambient.** The face ships two plates: `.img1.png` (the photo, `display="b"`)
+and `.img2.png`, a gamma-lifted copy (`display="d"`). Watches darken everything in
+ambient mode, so the dim plate is pre-brightened — without it the face reads as almost
+black on the wrist. Hands stay at 80 % opacity in dim mode.
+
+Swapping a readout is one edit in `build_watch.py` (`READOUTS`): e.g. `{pblp}` for the
+phone battery, `{stsc}` for the step target, `{wct}` for the weather description.
 
 ## How it was made
 
@@ -65,8 +73,10 @@ python3 build_watch.py            # writes ../Carrera_Porsche963.watch
 ## Known deviations from the photo
 
 * The date window shows today's date in Saira SemiBold (text size 20) instead of the
-  printed "8". The static photo digit was ~24 units tall; the live one is ~14 units so
-  that two-digit days still fit the 25-unit aperture.
+  printed "8", so two-digit days fit the narrow aperture.
+* The three chronograph registers became battery / steps / weather readouts, as asked.
+* The hands are cut by their measured silhouette, so the openworked cut-outs of the
+  real hands stay open — the dial shows through them as on the actual watch.
 * The sliver of dial that sat under each hand was reconstructed; the dynamic hands
   cover those areas again in normal use.
 * Hands are drawn at the photo's exact axes in `preview.jpg` only as a still pose.

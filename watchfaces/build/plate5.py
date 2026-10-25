@@ -41,10 +41,10 @@ def hand_poly(cx, cy, axis_deg, r_in, r_out, half_w, s=1.0, half_w_far=None):
     th = math.radians(axis_deg - 90.0)
     ux, uy = math.cos(th), math.sin(th)
     px, py = -uy, ux
-    a = (cx + ux * r_in * s - px * half_w * s, cy + uy * r_in * s - py * half_w * s)
+    a = (cx + ux * r_in * s - px * half_w * s, cy - uy * r_in * s - py * half_w * s)
     b = (cx + ux * r_out * s - px * half_w_far * s, cy + uy * r_out * s - py * half_w_far * s)
     c = (cx + ux * r_out * s + px * half_w_far * s, cy + uy * r_out * s + py * half_w_far * s)
-    d = (cx + ux * r_in * s + px * half_w * s, cy + uy * r_in * s + py * half_w * s)
+    d = (cx + ux * r_in * s + px * half_w * s, cy - uy * r_in * s + py * half_w * s)
     return np.array([a, b, c, d], np.int32)
 
 
@@ -169,6 +169,14 @@ def erase_date(img):
 
 
 def extract_hand(img, cx, cy, axis_deg, r_in, r_out, w_near, w_far, kind):
+    """Cut a hand out of the photo.
+
+    The silhouette is taken from the measured geometry (a solid swath), not from a
+    luminance threshold: the hands are polished metal with dark sides, so thresholding
+    leaves only a thin bright ridge and the hand renders as a wireframe on the watch.
+    The hub is replaced with a synthetic steel boss so the neighbouring hands, which
+    overlap there in the photo, do not leave rotating slivers.
+    """
     span = int(max(abs(r_in), r_out) * SCALE) + 40
     px, py = cx * SCALE, cy * SCALE
     rot = cv2.getRotationMatrix2D((px, py), axis_deg, 1.0)
@@ -177,30 +185,52 @@ def extract_hand(img, cx, cy, axis_deg, r_in, r_out, w_near, w_far, kind):
     crop = big[int(py) - span:int(py) + span, int(px) - span:int(px) + span].copy()
     ch, cw = crop.shape[:2]
     ccx, ccy = cw // 2, ch // 2
+
     poly = np.array([
-        (ccx - w_near / 2 * SCALE, ccy + r_in * SCALE),
+        (ccx - w_near / 2 * SCALE, ccy - r_in * SCALE),
         (ccx - w_far / 2 * SCALE, ccy - (r_out - 2) * SCALE),
         (ccx + w_far / 2 * SCALE, ccy - (r_out - 2) * SCALE),
-        (ccx + w_near / 2 * SCALE, ccy + r_in * SCALE),
+        (ccx + w_near / 2 * SCALE, ccy - r_in * SCALE),
     ], np.int32)
     shape_mask = np.zeros((ch, cw), np.uint8)
     cv2.fillPoly(shape_mask, [poly], 255)
-    cv2.circle(shape_mask, (ccx, int(ccy - (r_out - 3) * SCALE)), int(w_far / 2 * SCALE * 0.95), 255, -1)
-    cv2.circle(shape_mask, (ccx, ccy), int(13 * SCALE), 255, -1)
+    cv2.circle(shape_mask, (ccx, int(ccy - (r_out - 3) * SCALE)), int(w_far / 2 * SCALE), 255, -1)
+    cv2.circle(shape_mask, (ccx, ccy), int(14 * SCALE), 255, -1)
 
-    f = crop.astype(np.float32)
-    lum = f.mean(axis=2)
-    R, G, B = f[:, :, 0], f[:, :, 1], f[:, :, 2]
-    if kind == "red":
-        core = (R > 60) & (R - G > 18) & (R - B > 18)
-    else:
-        core = lum > 112
-        core |= (R - G > 20) & (R - B > 20)
-    core = core.astype(np.uint8) * 255
-    core = cv2.morphologyEx(core, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-    alpha = cv2.bitwise_and(core, shape_mask)
-    alpha = cv2.GaussianBlur(alpha, (0, 0), 0.7)
-    rgba = np.dstack([crop, alpha]).astype(np.uint8)
+    # pull the silhouette in by ~1 sprite px so the anti-aliased dial edge is not carried
+    alpha = cv2.erode(shape_mask, np.ones((3, 3), np.uint8))
+    alpha = cv2.GaussianBlur(alpha, (0, 0), 0.9)
+    alpha = np.clip((alpha.astype(np.float32) - 20.0) * (255.0 / 215.0), 0, 255).astype(np.uint8)
+
+    # extend the clean part of the shaft inwards: near the pivot the other hands cross
+    # this one in the photo, so copy the row at r = 45 px down to the hub
+    clean_r = int(45 * SCALE)
+    spr = crop.copy()
+    row_at = crop[ccy - clean_r].copy()
+    solid = shape_mask > 0
+    for yy in range(ccy - clean_r + 1, ccy + int(30 * SCALE) + 1):
+        m = solid[yy]
+        spr[yy][m] = row_at[m]
+    crop = spr
+
+    # synthetic polished hub
+    hub = int(14 * SCALE)
+    yy, xx = np.mgrid[0:ch, 0:cw].astype(np.float32)
+    rr = np.hypot(xx - ccx, yy - ccy)
+    t = np.clip(rr / hub, 0, 1)[..., None]
+    inner = np.array([206, 210, 214], np.float32)
+    outer = np.array([104, 109, 114], np.float32)
+    boss = inner * (1 - t) + outer * t
+    ring = (rr > hub * 0.90) & (rr <= hub)
+    boss[ring] = np.array([58, 61, 65], np.float32)
+    pin = rr < hub * 0.16
+    boss[pin] = np.array([40, 42, 46], np.float32)
+
+    rgb = crop.astype(np.float32)
+    hub_zone = rr <= hub
+    rgb[hub_zone] = boss[hub_zone]
+
+    rgba = np.dstack([np.clip(rgb, 0, 255).astype(np.uint8), alpha]).astype(np.uint8)
     return Image.fromarray(rgba, "RGBA")
 
 
