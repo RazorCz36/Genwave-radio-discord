@@ -198,10 +198,30 @@ def extract_hand(img, cx, cy, axis_deg, r_in, r_out, w_near, w_far, kind):
     cv2.circle(shape_mask, (ccx, int(ccy - (r_out - 3) * SCALE)), int(w_far / 2 * SCALE), 255, -1)
     cv2.circle(shape_mask, (ccx, ccy), int(14 * SCALE), 255, -1)
 
-    # pull the silhouette in by ~1 sprite px so the anti-aliased dial edge is not carried
-    alpha = cv2.erode(shape_mask, np.ones((3, 3), np.uint8))
-    alpha = cv2.GaussianBlur(alpha, (0, 0), 0.9)
-    alpha = np.clip((alpha.astype(np.float32) - 20.0) * (255.0 / 215.0), 0, 255).astype(np.uint8)
+    if kind == "steel":
+        # The Carrera hands are skeleton: two polished rails with the dial visible
+        # through the middle.  A solid swath therefore renders as a pale bar lying
+        # across whatever is underneath, which is what looked like a ghost hand on
+        # the STEPS ring.  Take the real silhouette from the photo instead: bright
+        # pixels only, closed into one connected piece and clipped to the swath.
+        lum = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        bright = (lum > 118).astype(np.uint8) * 255
+        core = cv2.bitwise_and(bright, shape_mask)
+        core = cv2.morphologyEx(core, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+        core = cv2.morphologyEx(core, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+        n, lab, stats, _ = cv2.connectedComponentsWithStats((core > 0).astype(np.uint8), 8)
+        if n > 1:
+            areas = stats[1:, cv2.CC_STAT_AREA]
+            keep = 1 + int(np.argmax(areas))
+            core = np.where(lab == keep, 255, 0).astype(np.uint8)
+        core = cv2.bitwise_and(core, cv2.erode(shape_mask, np.ones((3, 3), np.uint8)))
+        alpha = cv2.GaussianBlur(core, (0, 0), 0.8)
+        alpha = np.clip((alpha.astype(np.float32) - 26.0) * (255.0 / 205.0), 0, 255).astype(np.uint8)
+    else:
+        # solid hand (the red chrono needle): keep the whole swath
+        alpha = cv2.erode(shape_mask, np.ones((3, 3), np.uint8))
+        alpha = cv2.GaussianBlur(alpha, (0, 0), 0.9)
+        alpha = np.clip((alpha.astype(np.float32) - 20.0) * (255.0 / 215.0), 0, 255).astype(np.uint8)
 
     # extend the clean part of the shaft inwards: near the pivot the other hands cross
     # this one in the photo, so copy the row at r = 45 px down to the hub

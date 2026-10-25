@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = os.environ.get("WATCH_WORK", "/tmp/out/final")
@@ -87,6 +87,128 @@ def make_plate():
                                    quality=92, subsampling=0)
 
     return px
+
+
+
+# ---------------------------------------------------------------- hand sprites
+def _steel_gradient(size, stops):
+    """Horizontal polish bevel: dark edge, bright centre, dark edge."""
+    from PIL import ImageDraw as _D
+    g = Image.new("RGB", (size, 1))
+    d = _D.Draw(g)
+    for x in range(size):
+        t = x / max(size - 1, 1)
+        for i in range(len(stops) - 1):
+            t0, c0 = stops[i]
+            t1, c1 = stops[i + 1]
+            if t0 <= t <= t1:
+                k = (t - t0) / max(t1 - t0, 1e-6)
+                col = tuple(int(c0[j] + (c1[j] - c0[j]) * k) for j in range(3))
+                d.point((x, 0), fill=col)
+                break
+    return g.resize((size, size))
+
+
+STEEL = [(0.00, (64, 69, 74)), (0.10, (150, 157, 164)), (0.26, (238, 243, 248)),
+         (0.46, (255, 255, 255)), (0.56, (214, 220, 226)), (0.78, (168, 175, 182)),
+         (0.90, (196, 202, 208)), (1.00, (58, 63, 68))]
+RED = [(0.00, (118, 8, 14)), (0.20, (198, 28, 34)), (0.50, (247, 66, 66)),
+       (0.74, (200, 26, 32)), (1.00, (104, 6, 12))]
+
+
+def make_hand(path, length, tail, w_near, w_far, stops, hub_r=0.0, hub_stops=None,
+              facet=0.0, facet_col=(21, 23, 26), tip=0.0):
+    """Draw one complete hand pointing up with its pivot in the middle.
+
+    The photo-derived sprites could not be cut out cleanly (the hands are skeleton
+    rails over a busy dial), so a solid hand is drawn in their measured geometry.
+    """
+    from PIL import ImageDraw as _D
+    SS = 3
+    side = int(2 * math.ceil(max(length, tail) + hub_r + 3))
+    S = side * SS
+    c = S / 2.0
+    L = length * SS
+    WN, WF = w_near * SS, w_far * SS
+    y0 = c + 2.0 * SS
+
+    def blade(scale_w):
+        n, f = WN * scale_w, WF * scale_w
+        nose = c - L + max(WF * 0.9, 2.0 * SS)
+        return [(c - n / 2, c - 0.14 * L), (c - f / 2, nose),
+                (c, c - L), (c + f / 2, nose), (c + n / 2, c - 0.14 * L),
+                (c + n / 2, y0), (c - n / 2, y0)]
+
+    mask = Image.new("L", (S, S), 0)
+    d = _D.Draw(mask)
+    d.polygon(blade(1.0), fill=255)
+    if tail > 2:
+        t = tail * SS
+        d.polygon([(c - WN * 0.38, c), (c - WN * 0.22, c + t),
+                   (c + WN * 0.22, c + t), (c + WN * 0.38, c)], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(SS * 0.30))
+
+    edge = mask.filter(ImageFilter.MaxFilter(2 * int(SS * 0.55) + 1))
+    sprite = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    sprite.paste(Image.new("RGBA", (S, S), (10, 11, 13, 255)), (0, 0),
+                 edge.point(lambda v: int(v * 0.85)))
+    sprite.paste(_steel_gradient(S, stops), (0, 0), mask)
+
+    if facet > 0:
+        fm = Image.new("L", (S, S), 0)
+        _D.Draw(fm).polygon(blade(facet), fill=255)
+        fm = fm.filter(ImageFilter.GaussianBlur(SS * 0.28))
+        fm = fm.point(lambda v: int(v * 0.92))
+        sprite.paste(Image.new("RGBA", (S, S), facet_col + (255,)), (0, 0), fm)
+
+    if tip > 0:                              # lume-tipped point, like the photo
+        tm = Image.new("L", (S, S), 0)
+        _D.Draw(tm).polygon(blade(tip), fill=255)
+        tm = tm.filter(ImageFilter.GaussianBlur(SS * 0.26))
+        cut = c - L + 0.14 * L                # only the far end of the blade
+        arr = np.asarray(tm).copy()
+        arr[:int(cut)] = 0
+        tm = Image.fromarray(arr, "L")
+        sprite.paste(Image.new("RGBA", (S, S), (247, 249, 251, 255)), (0, 0), tm)
+
+    if hub_r > 0:
+        hr = hub_r * SS
+        hm = Image.new("L", (S, S), 0)
+        _D.Draw(hm).ellipse([c - hr, c - hr, c + hr, c + hr], fill=255)
+        hm = hm.filter(ImageFilter.GaussianBlur(SS * 0.22))
+        hub = _steel_gradient(int(2 * hr), hub_stops or STEEL).resize((S, S))
+        sprite.paste(hub, (0, 0), hm)
+        ring = Image.new("L", (S, S), 0)
+        _D.Draw(ring).ellipse([c - hr, c - hr, c + hr, c + hr],
+                              outline=255, width=max(1, int(SS * 1.1)))
+        sprite.paste(Image.new("RGBA", (S, S), (48, 52, 56, 255)), (0, 0),
+                     ring.point(lambda v: int(v * 0.55)))
+
+    sprite = sprite.resize((side, side), Image.LANCZOS)
+    sprite.save(path)
+    return side
+
+
+def build_hands():
+    """Hand geometry straight from the photo, expressed in canvas units."""
+    k = 512.0 / (2.0 * DIAL_R)
+    out = []
+    for name, kind in (("hand_hour.png", "hour"), ("hand_minute.png", "minute"),
+                       ("hand_second.png", "chrono")):
+        h = HANDS[kind]
+        red = kind == "chrono"
+        side = make_hand(os.path.join(WORK, "images", name),
+                         length=h["r_out"] * k, tail=abs(h["r_in"]) * k,
+                         w_near=h["w_near"] * k * (0.58 if red else 1.22),
+                         w_far=h["w_far"] * k * (0.58 if red else 1.22),
+                         stops=RED if red else STEEL,
+                         hub_r=(6.0 if red else 9.5),
+                         hub_stops=[(0.0, (118, 123, 128)), (0.42, (236, 241, 245)),
+                                    (0.60, (206, 212, 218)), (1.0, (104, 109, 114))],
+                         facet=0.0 if red else 0.64,
+                         tip=0.0 if red else 0.34)
+        out.append((name, side))
+    return out
 
 
 # ---------------------------------------------------------------- hands
@@ -355,13 +477,13 @@ def main():
         f = os.path.join(WORK, "images", stale)
         if os.path.exists(f):
             os.remove(f)
-    for src, dst in [("hand_hour.png", "hand_hour.png"), ("hand_minute.png", "hand_minute.png"),
-                     ("hand_chrono.png", "hand_second.png")]:
-        SPRITE[src] = trim_hand(os.path.join(WORK, src), os.path.join(WORK, "images", dst))
-        print("   ", src, SPRITE[src])
+    for name, side in build_hands():
+        HAND_LAYER[name.replace("hand_", "").replace(".png", "")] = side
+        if name == "hand_second.png":
+            HAND_LAYER["chrono"] = side
+        print("   ", name, side, "px")
 
-    print("[3b/6] matching sprite pixel sizes to their declared layer sizes")
-    fit_hands()
+    print("[3b/6] hand sprites drawn at their declared layer size")
 
     print("[4/6] writing watch.xml")
     with open(os.path.join(WORK, "watch.xml"), "w", encoding="utf-8") as f:

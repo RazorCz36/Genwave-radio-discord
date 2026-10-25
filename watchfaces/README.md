@@ -40,10 +40,21 @@ the photo's own scale sat under the removed register hands and carried a bright 
 hand" blade across the top of every ring. The 6 o'clock ring skips the ticks that would
 cross the date aperture.
 
-The clean disc inside each register reaches 56 source px (50 units) — the printed scale
-ring is pushed out to the rim so the caption has clear black under it, and the readouts are
-sized to still fit if WatchMaker draws text larger than the nominal `text_size`
-(`TEXT_SCALE=1.35 python3 mockup.py out.jpg` renders that pessimistic case).
+The tick scale is pushed out to the rim so each caption has clear black under it, and the
+readouts are sized to still fit if WatchMaker draws text larger than the nominal
+`text_size` (`TEXT_SCALE=1.35 python3 mockup.py out.jpg` renders that pessimistic case).
+
+**Hands are drawn, not cut out of the photo.** The first hand sprites were cut from the
+photograph along a straight swath, so each sprite kept an opaque, flat-edged rectangle
+around the blade. Whenever the minute hand swept over the 3 o'clock register that
+rectangle landed across it as a pale grey bar under the STEPS caption — the "erased hand"
+in the bug reports. The real Carrera hands are openworked: two polished rails with a dark
+centre and a pointed lume tip, and a hollow centre cannot be reproduced by pasting a
+rectangle. `build_watch.py` therefore draws them in the photo's measured geometry
+(`HANDS`): silhouette, bevel gradient, dark centre facet, lume tip, hub and dark rim, at
+three-times supersampling, then sizes every sprite to exactly the layer width it is
+declared with. Nothing but the hand itself has any alpha, so a hand can pass over a
+register without disturbing it.
 
 The printed scales inside the three small dials are **erased in the plate itself**
 (the interiors are repainted as clean black discs with matched grain), so each readout
@@ -81,9 +92,8 @@ Whatever stays black is the property the converter destroys.
 
 **Asset sizes are locked to the XML.** Store faces do declare sizes that differ from the
 bitmap, but matching them costs nothing and removes one variable. The plate is 512 px and
-declared 512; each hand sprite is resampled to exactly the integer layer width it is
-declared with (265 / 367 / 402 px). `build_watch.py` asserts this: every `path=` bitmap
-matches its declaration.
+declared 512; each hand sprite is 346 / 472 / 508 px and declared at exactly that width.
+`build_watch.py` asserts this: every `path=` bitmap matches its declaration.
 
 The same reason killed `opacity="{abright} and 100 or 80"` on hands and date — this build
 resolves the expression to nothing and hides the layer, so all opacities are plain `100`.
@@ -101,12 +111,15 @@ The dial is **the original photograph**, not a redraw: every hand was cut out as
 RGBA sprite, the plate behind it was reconstructed, and the printed date digit was
 erased so a real date can be drawn over the cream plate.
 
-* `build/plate5.py` — measures the hand swaths, removes them (angular interpolation
-  around the dial centre / sub-dial centres, flattens the black sub-dial interiors with
-  a per-radius percentile, Telea in-paint for leftovers), erases the printed day digit,
-  and cuts the hand sprites with the pivot centred.
-* `build/build_watch.py` — trims the sprites, makes the 2048² circular plate,
-  writes `watch.xml`, renders `preview.jpg` / `preview_dim.jpg` and zips the `.watch`.
+* `build/plate5.py` — builds the exact swath of every hand from the measured geometry,
+  fills it by angular interpolation around the dial centre and around each sub-dial
+  centre (so the skeleton bridges continue *around* the removed hand instead of being
+  smeared across it), flattens the black register interiors with a per-radius percentile,
+  adds matched grain, erases the printed day digit from the cream plate, and cuts the
+  sprites with their pivot centred.
+* `build/build_watch.py` — draws the three hand sprites in that geometry, crops the plate
+  to the dial, writes `watch.xml`, renders `preview.jpg` / `preview_dim.jpg` and zips the
+  `.watch`.
 
 Render a still of the packaged face, or a device mockup:
 
@@ -130,8 +143,9 @@ python3 build_watch.py            # writes ../Carrera_Porsche963.watch
 * The date window shows today's date in Saira SemiBold (text size 20) instead of the
   printed "8", so two-digit days fit the narrow aperture.
 * The three chronograph registers became battery / steps / weather readouts, as asked.
-* The hands are cut by their measured silhouette, so the openworked cut-outs of the
-  real hands stay open — the dial shows through them as on the actual watch.
+* The hands are drawn in the photo's silhouette (two rails, dark openworked centre,
+  pointed lume tip) rather than traced pixel by pixel, because the photo only shows them
+  in one pose.
 * The sliver of dial that sat under each hand was reconstructed; the dynamic hands
   cover those areas again in normal use.
 * Hands are drawn at the photo's exact axes in `preview.jpg` only as a still pose.
