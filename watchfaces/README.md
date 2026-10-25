@@ -38,7 +38,17 @@ its black frame survive.
 **Bright vs ambient.** The face ships two plates: `.img1.png` (the photo, `display="b"`)
 and `.img2.png`, a gamma-lifted copy (`display="d"`). Watches darken everything in
 ambient mode, so the dim plate is pre-brightened — without it the face reads as almost
-black on the wrist. Hands stay at 80 % opacity in dim mode.
+black on the wrist.
+
+**Asset sizes are locked to the XML.** WatchMaker on the phone rescales any bitmap to the
+layer's `width`/`height`, but the watch-side renderer only draws a texture whose pixel
+size already equals the declared size — anything else silently disappears (black dial,
+no hands, only the text layers). So the plate is 512 px and declared 512, and each hand
+sprite is resampled to exactly the integer layer width it is declared with (265 / 367 /
+402 px). `build_watch.py` asserts this: every `path=` bitmap matches its declaration.
+
+The same reason killed `opacity="{abright} and 100 or 80"` on hands and date — this build
+resolves the expression to nothing and hides the layer, so all opacities are plain `100`.
 
 Swapping a readout is one edit in `build_watch.py` (`READOUTS`): e.g. `{pblp}` for the
 phone battery, `{stsc}` for the step target, `{wct}` for the weather description.

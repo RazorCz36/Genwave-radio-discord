@@ -26,8 +26,10 @@ WORK = os.environ.get("WATCH_WORK", "/tmp/out/final")
 DELIVER = os.path.dirname(HERE)          # .../watchfaces
 
 SCALE = 2.6
-PLATE_PX = 1280          # 3x the watch's own screen; keeps the package small enough to sync
-HAND_PX = 760
+# WatchMaker on the wrist drops any bitmap whose pixel size differs from the
+# layer's declared width/height (the desktop editor silently rescales, the watch
+# does not), so every asset is authored at exactly the size written into the XML.
+PLATE_PX = 512
 CX, CY = 290.6, 535.4
 CASE_R = 286.0
 
@@ -78,8 +80,6 @@ def make_plate():
     f = a.astype(np.float32) / 255.0
     dim = np.clip((f ** 0.55) * 255.0, 0, 255).astype(np.uint8)
     dim_im = Image.fromarray(np.dstack([dim, alpha.astype(np.uint8)]), "RGBA")
-    # ambient mode is low-detail: half resolution keeps the package small
-    dim_im = dim_im.resize((PLATE_PX // 2, PLATE_PX // 2), Image.LANCZOS)
     dim_im.save(os.path.join(WORK, "images", ".img2.png"))
     return px
 
@@ -112,18 +112,19 @@ def trim_hand(path, out_path):
     side = max(crop.size)
     canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     canvas.paste(crop, ((side - crop.size[0]) // 2, (side - crop.size[1]) // 2))
-    out_px = min(HAND_PX, max(240, side))
-    canvas = canvas.resize((out_px, out_px), Image.LANCZOS)
     canvas.save(out_path)
     extent = max(abs(xs.min() - c), abs(xs.max() - c), abs(ys.min() - c), abs(ys.max() - c))
     return side, float(extent)
 
 
 SPRITE = {}          # sprite name -> (side px, alpha extent px)
+HAND_LAYER = {}      # hand kind -> declared layer size in 512-units (== sprite px)
 
 
 def layer_w(kind, r_out=None):
     """Layer width in 512-units that puts the sprite tip exactly at the measured radius."""
+    if kind in HAND_LAYER:
+        return float(HAND_LAYER[kind])
     if kind == "reg":
         side, ext = SPRITE["reg_hand_red.png"]
         return side * (0.93 * r_out) / CASE_R * 256.0 / ext
@@ -139,6 +140,27 @@ def layer_w(kind, r_out=None):
 
 SPRITE_NAME = {"hour": "hand_hour.png", "minute": "hand_minute.png",
                "chrono": "hand_chrono.png"}
+
+
+def fit_hands():
+    """Resample every hand sprite so its pixel size equals its declared layer size.
+
+    The sprite is square with the pivot at its centre. Drawing it as a layer of
+    width W gives a scale of W/side, so the visible tip sits at extent*W/side;
+    we want that to equal the measured radius, which fixes W. Once W is known the
+    bitmap is resampled to exactly W px, so declaration and texture agree.
+    """
+    for kind, img in (("hour", ".img3.png"), ("minute", ".img4.png"),
+                      ("chrono", ".img5.png")):
+        name = SPRITE_NAME[kind]
+        target = int(round(layer_w(kind)))
+        side, ext = SPRITE[name]
+        path = os.path.join(WORK, "images", img)
+        im = Image.open(path).convert("RGBA").resize((target, target), Image.LANCZOS)
+        im.save(path)
+        SPRITE[name] = (target, ext * target / side)
+        HAND_LAYER[kind] = target
+        print(f"    {img}: {side}px -> {target}px (layer width {target})")
 
 
 # ---------------------------------------------------------------- xml
@@ -157,7 +179,7 @@ def shape_layer(name, x, y, w, h, color, opacity):
 
 
 def watch_xml():
-    def img_layer(name, path, size, rot="0", opacity='{abright} and 100 or 80', extra=""):
+    def img_layer(name, path, size, rot="0", opacity="100", extra=""):
         return (f'    <Layer name="{escape(name)}" type="image" x="0" y="0" gyro="0" '
                 f'rotation="{rot}" skew_x="0" skew_y="0" opacity="{opacity}" alignment="cc" '
                 f'path="{path}" width="{size}" height="{size}" color="ffffff" display="bd"{extra}/>')
@@ -193,12 +215,12 @@ def watch_xml():
 
     # date window (dynamic)
     lines.append(text_layer("date", DATE_U[0], DATE_U[1], "{dd}", DATE_SIZE,
-                            "101215", "101215", opacity="{abright} and 100 or 85"))
+                            "101215", "101215"))
 
     # hands last so they pass over the dial printing
-    lines.append(img_layer("hour hand", ".img3.png", round(layer_w("hour"), 1), rot="{drh}"))
-    lines.append(img_layer("minute hand", ".img4.png", round(layer_w("minute"), 1), rot="{drm}"))
-    lines.append(img_layer("chrono seconds", ".img5.png", round(layer_w("chrono"), 1), rot="{drss}"))
+    lines.append(img_layer("hour hand", ".img3.png", int(round(layer_w("hour"))), rot="{drh}"))
+    lines.append(img_layer("minute hand", ".img4.png", int(round(layer_w("minute"))), rot="{drm}"))
+    lines.append(img_layer("chrono seconds", ".img5.png", int(round(layer_w("chrono"))), rot="{drss}"))
 
     lines.append('</Watch>')
     return "\n".join(lines) + "\n"
@@ -270,6 +292,28 @@ def make_preview():
 
 
 # ---------------------------------------------------------------- package
+def verify_package(path):
+    """Fail the build if any declared layer size disagrees with its bitmap."""
+    import io
+    import re
+    with zipfile.ZipFile(path) as z:
+        xml = z.read("watch.xml").decode()
+        bad = []
+        for tag in re.findall(r"<Layer[^>]*type=\"image\"[^>]*/>", xml):
+            src = re.search(r'path="([^"]+)"', tag).group(1)
+            w = float(re.search(r'width="([\d.]+)"', tag).group(1))
+            h = float(re.search(r'height="([\d.]+)"', tag).group(1))
+            size = Image.open(io.BytesIO(z.read(f"images/{src}"))).size
+            if size != (w, h):
+                bad.append((src, size, (w, h)))
+            print(f"    {src:11s} {size[0]:4d}x{size[1]:<4d} declared {w:.0f}x{h:.0f}")
+        if "{abright}" in xml:
+            bad.append(("{abright}", "expression", "bare opacity"))
+    if bad:
+        raise SystemExit(f"layer/bitmap mismatch: {bad}")
+    print("    all image layers match their declarations")
+
+
 def package():
     out = os.path.join(DELIVER, "Carrera_Porsche963.watch")
     os.makedirs(DELIVER, exist_ok=True)
@@ -310,6 +354,9 @@ def main():
         SPRITE[src] = trim_hand(os.path.join(WORK, src), os.path.join(WORK, "images", dst))
         print("   ", src, SPRITE[src])
 
+    print("[3b/6] matching sprite pixel sizes to their declared layer sizes")
+    fit_hands()
+
     print("[4/6] writing watch.xml")
     with open(os.path.join(WORK, "watch.xml"), "w", encoding="utf-8") as f:
         f.write(watch_xml())
@@ -319,6 +366,9 @@ def main():
 
     print("[6/6] packaging .watch")
     out = package()
+
+    print("[6b/6] verifying layer sizes against the packaged bitmaps")
+    verify_package(out)
     print("done ->", out, os.path.getsize(out) // 1024, "KiB")
 
 
