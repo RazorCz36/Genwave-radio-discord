@@ -79,8 +79,14 @@ def make_plate():
 
 
 # ---------------------------------------------------------------- hands
-def trim_hand(path, out_path, pad_units=4):
-    """Crop a hand sprite to its alpha bbox but keep the pivot in the middle."""
+def trim_hand(path, out_path):
+    """Crop a hand sprite to its alpha bbox, keep the pivot centred.
+
+    Returns (side, extent): `side` is the square crop size in sprite pixels and
+    `extent` the distance from the pivot to the furthest opaque pixel. WatchMaker
+    needs the layer width such that `extent` lands exactly on the measured hand
+    length, so width = side * r_out_units / extent.
+    """
     im = Image.open(path).convert("RGBA")
     a = np.asarray(im)
     n = a.shape[0]
@@ -89,7 +95,7 @@ def trim_hand(path, out_path, pad_units=4):
     ys, xs = np.nonzero(alpha > 8)
     if len(xs) == 0:
         im.save(out_path)
-        return im.size
+        return n, c
     ex = max(abs(xs.min() - c), abs(xs.max() - c))
     ey = max(abs(ys.min() - c), abs(ys.max() - c))
     half = int(math.ceil(max(ex, ey) + 2))
@@ -103,11 +109,30 @@ def trim_hand(path, out_path, pad_units=4):
     out_px = min(1400, max(240, side))
     canvas = canvas.resize((out_px, out_px), Image.LANCZOS)
     canvas.save(out_path)
-    return canvas.size
+    extent = max(abs(xs.min() - c), abs(xs.max() - c), abs(ys.min() - c), abs(ys.max() - c))
+    return side, float(extent)
 
 
-def hand_unit_size(src_px_size, span_units):
-    return span_units
+SPRITE = {}          # sprite name -> (side px, alpha extent px)
+
+
+def layer_w(kind, r_out=None):
+    """Layer width in 512-units that puts the sprite tip exactly at the measured radius."""
+    if kind == "reg":
+        side, ext = SPRITE["reg_hand_red.png"]
+        return side * (0.93 * r_out) / CASE_R * 256.0 / ext
+    if kind == "reg2":
+        side, ext = SPRITE["reg_hand_red2.png"]
+        return side * (0.93 * r_out) / CASE_R * 256.0 / ext
+    if kind == "regb":
+        side, ext = SPRITE["reg_hand_steel.png"]
+        return side * (0.93 * r_out) / CASE_R * 256.0 / ext
+    side, ext = SPRITE[SPRITE_NAME[kind]]
+    return side * (HANDS[kind]["r_out"] / CASE_R * 256.0) / ext
+
+
+SPRITE_NAME = {"hour": "hand_hour.png", "minute": "hand_minute.png",
+               "chrono": "hand_chrono.png"}
 
 
 # ---------------------------------------------------------------- xml
@@ -136,21 +161,18 @@ def watch_xml():
 
     # hands: hour, minute, chrono seconds
     h = HANDS
-    sp = lambda k: abs(max(abs(h[k]["r_in"]), h[k]["r_out"])) / CASE_R * 256.0 * 2.0
-    lines.append(img_layer("hour hand", ".img3.png", round(sp("hour"), 1), rot="{drh}"))
-    lines.append(img_layer("minute hand", ".img4.png", round(sp("minute"), 1), rot="{drm}"))
-    lines.append(img_layer("chrono seconds", ".img5.png", round(sp("chrono"), 1), rot="{drss}"))
+    lines.append(img_layer("hour hand", ".img3.png", round(layer_w("hour"), 1), rot="{drh}"))
+    lines.append(img_layer("minute hand", ".img4.png", round(layer_w("minute"), 1), rot="{drm}"))
+    lines.append(img_layer("chrono seconds", ".img5.png", round(layer_w("chrono"), 1), rot="{drss}"))
 
     # register hands — positions come straight from the photo
     lx, ly = REG_UNITS[0]
     rx, ry = REG_UNITS[1]
     bx, by = REG_UNITS[2]
-    reg_span = 75.0 / CASE_R * 256.0 * 2.0
-    reg_span_b = 70.0 / CASE_R * 256.0 * 2.0
     for name, path, x, y, size, rot in [
-        ("chrono hours", ".img6.png", lx, ly, reg_span, "({swh}%12)*30 + {swm}*0.5"),
-        ("chrono minutes", ".img7.png", rx, ry, reg_span, "({swm}%30)*12 + {sws}*0.2"),
-        ("seconds", ".img8.png", bx, by, reg_span_b, "{drss}"),
+        ("chrono hours", ".img6.png", lx, ly, layer_w("reg", 75.0), "({swh}%12)*30 + {swm}*0.5"),
+        ("chrono minutes", ".img7.png", rx, ry, layer_w("reg2", 75.0), "({swm}%30)*12 + {sws}*0.2"),
+        ("seconds", ".img8.png", bx, by, layer_w("regb", 70.0), "{drss}"),
     ]:
         lines.append(
             f'    <Layer name="{escape(name)}" type="image" x="{x:.2f}" y="{y:.2f}" gyro="0" '
@@ -187,16 +209,14 @@ def make_preview():
         layer.paste(im, ((W - s) // 2, (W - s) // 2), im)
         base.alpha_composite(layer)
 
-    sp = lambda k: abs(max(abs(HANDS[k]["r_in"]), HANDS[k]["r_out"])) / CASE_R * 256.0 * 2.0
-    place(os.path.join(WORK, "images", ".img3.png"), sp("hour"), 300)
-    place(os.path.join(WORK, "images", ".img4.png"), sp("minute"), 60)
-    place(os.path.join(WORK, "images", ".img5.png"), sp("chrono"), 42)
+    place(os.path.join(WORK, "images", ".img3.png"), layer_w("hour"), 300)
+    place(os.path.join(WORK, "images", ".img4.png"), layer_w("minute"), 60)
+    place(os.path.join(WORK, "images", ".img5.png"), layer_w("chrono"), 42)
 
-    reg_span = 75.0 / CASE_R * 256.0 * 2.0
     for path, (x, y), size, ang in [
-        (".img6.png", REG_UNITS[0], reg_span, 0),
-        (".img7.png", REG_UNITS[1], reg_span, 0),
-        (".img8.png", REG_UNITS[2], (70.0 / CASE_R * 256.0 * 2.0), 0),
+        (".img6.png", REG_UNITS[0], layer_w("reg", 75.0), 0),
+        (".img7.png", REG_UNITS[1], layer_w("reg2", 75.0), 0),
+        (".img8.png", REG_UNITS[2], layer_w("regb", 70.0), 0),
     ]:
         im = Image.open(os.path.join(WORK, "images", path)).convert("RGBA")
         s = max(1, int(round(size * W / 512.0)))
@@ -257,7 +277,8 @@ def main():
     for src, dst in [("hand_hour.png", ".img3.png"), ("hand_minute.png", ".img4.png"),
                      ("hand_chrono.png", ".img5.png"), ("reg_hand_red.png", ".img6.png"),
                      ("reg_hand_red2.png", ".img7.png"), ("reg_hand_steel.png", ".img8.png")]:
-        trim_hand(os.path.join(WORK, src), os.path.join(WORK, "images", dst))
+        SPRITE[src] = trim_hand(os.path.join(WORK, src), os.path.join(WORK, "images", dst))
+        print("   ", src, SPRITE[src])
 
     print("[4/6] writing watch.xml")
     with open(os.path.join(WORK, "watch.xml"), "w", encoding="utf-8") as f:

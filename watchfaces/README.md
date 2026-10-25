@@ -52,8 +52,9 @@ python3 build_watch.py            # writes ../Carrera_Porsche963.watch
 
 ## Known deviations from the photo
 
-* The date window shows today's date in Saira SemiBold (~20 units) instead of the
-  printed "8", which was ~25 % larger but static.
+* The date window shows today's date in Saira SemiBold (text size 20) instead of the
+  printed "8". The static photo digit was ~24 units tall; the live one is ~14 units so
+  that two-digit days still fit the 25-unit aperture.
 * The sliver of dial that sat under each hand was reconstructed; the dynamic hands
   cover those areas again in normal use.
 * Hands are drawn at the photo's exact axes in `preview.jpg` only as a still pose.
