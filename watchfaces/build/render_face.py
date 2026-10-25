@@ -12,6 +12,8 @@ import os
 import re
 import sys
 import tempfile
+
+TEXT_SCALE = float(os.environ.get("TEXT_SCALE", "1.0"))  # WatchMaker draws text a touch larger
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -102,7 +104,7 @@ def render(watch_path, size=512, hh=10, mm=9, ss=0.0, swh=0, swm=0, sws=0.0,
                 txt = txt.replace(k2, v2)
             fname = layer.get("font")
             fpath = os.path.join(root_dir, "fonts", fname + ".ttf") if fname else ""
-            fsize = int(round(float(layer.get("text_size", "20")) * k))
+            fsize = int(round(float(layer.get("text_size", "20")) * k * TEXT_SCALE))
             font = ImageFont.truetype(fpath, fsize) if os.path.exists(fpath) else ImageFont.load_default()
             col = layer.get("color", "ffffff")
             rgb = tuple(int(col[i:i + 2], 16) for i in (0, 2, 4))

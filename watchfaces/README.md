@@ -29,6 +29,11 @@ WatchMaker Studio can open the same file on desktop (*File → Import .watch*).
 | 6 o'clock dial | **weather** — `{wtd}` (e.g. `12°C`) |
 | Date aperture | `{dd}` in a bundled Saira SemiBold |
 
+The clean disc inside each register reaches 56 source px (50 units) — the printed scale
+ring is pushed out to the rim so the caption has clear black under it, and the readouts are
+sized to still fit if WatchMaker draws text larger than the nominal `text_size`
+(`TEXT_SCALE=1.35 python3 mockup.py out.jpg` renders that pessimistic case).
+
 The printed scales inside the three small dials are **erased in the plate itself**
 (the interiors are repainted as clean black discs with matched grain), so each readout
 sits on plain black in the centre of its ring — no overlay disc is used. The 6 o'clock

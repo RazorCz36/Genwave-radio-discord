@@ -47,7 +47,7 @@ REGS = [(186.0, 535.5, 75.0), (398.5, 535.5, 75.0), (292.0, 641.0, 70.0)]
 DATE_CX, DATE_CY = 291.5, 691.5
 DATE_U = ((DATE_CX - CX) / CASE_R * 256.0, (DATE_CY - CY) / CASE_R * 256.0)
 DATE_FONT = "sairasemibold"   # WFF-safe resource name (lowercase)
-DATE_SIZE = 20
+DATE_SIZE = 17
 
 # register centres in units, relative to the dial centre
 REG_UNITS = [((x - CX) / CASE_R * 256.0, (y - CY) / CASE_R * 256.0) for x, y, _ in REGS]
@@ -208,9 +208,9 @@ def watch_xml():
     # A soft black disc knocks the printed 1-12 / 5-30 scales back so the numbers read.
     for cap, tag, _sample, cu, size_cap, size_val in READOUTS:
         x, y = REG_UNITS[cu]
-        lines.append(text_layer(f"{cap.lower()} value", x, y + 7, tag, size_val,
+        lines.append(text_layer(f"{cap.lower()} value", x, y + 8, tag, size_val,
                                 "f4f6f8", "c9ced3"))
-        lines.append(text_layer(f"{cap.lower()} label", x, y - 19, cap, size_cap,
+        lines.append(text_layer(f"{cap.lower()} label", x, y - 21, cap, size_cap,
                                 "9aa0a6", "7c8288"))
 
     # date window (dynamic)
@@ -229,9 +229,9 @@ def watch_xml():
 # ---------------------------------------------------------------- preview
 READOUTS = [
     # caption, tag, sample value (preview only), register index, caption size, value size
-    ("BATTERY", "{blp}", "87%", 0, 9, 24),
-    ("STEPS", "{ssc}", "6420", 1, 9, 22),
-    ("WEATHER", "{wtd}", "12\u00b0C", 2, 8, 21),
+    ("BATTERY", "{blp}", "87%", 0, 7.5, 19),
+    ("STEPS", "{ssc}", "6420", 1, 7.5, 18),
+    ("WEATHER", "{wtd}", "12\u00b0C", 2, 7, 17),
 ]
 
 
@@ -255,9 +255,9 @@ def compose_preview(plate, hand_alpha=1.0):
         px = W / 2 + x * W / 512.0
         f_cap = ImageFont.truetype(font_path, size_cap)
         f_val = ImageFont.truetype(font_path, size_val)
-        d.text((px, W / 2 + (y + 7) * W / 512.0), val, font=f_val,
+        d.text((px, W / 2 + (y + 8) * W / 512.0), val, font=f_val,
                fill=(0xf4, 0xf6, 0xf8), anchor="mm")
-        d.text((px, W / 2 + (y - 19) * W / 512.0), cap, font=f_cap,
+        d.text((px, W / 2 + (y - 21) * W / 512.0), cap, font=f_cap,
                fill=(0x9a, 0xa0, 0xa6), anchor="mm")
 
     # date

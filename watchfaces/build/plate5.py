@@ -322,7 +322,7 @@ def main():
 
     keep = [int(273 * SCALE), int(670 * SCALE), int(309 * SCALE), int(713 * SCALE)]
     for i, (sx, sy, sr) in enumerate(REGS):
-        out = clean_subdial(out, sx * SCALE, sy * SCALE, 50.0 * SCALE, seed=11 + i,
+        out = clean_subdial(out, sx * SCALE, sy * SCALE, 56.0 * SCALE, seed=11 + i,
                             keep_rect=(keep if i == 2 else None))
 
     Image.fromarray(out).save(os.path.join(OUT, "plate_full.png"))
