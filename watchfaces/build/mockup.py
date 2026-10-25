@@ -105,7 +105,9 @@ def compose(face, size=1400, screen_frac=0.855, label=None):
     face_px = int(sr * 2 * 1.0)
     im = render(WATCH, size=face_px, hh=face["hh"], mm=face["mm"], ss=face.get("ss", 0.0),
                 swh=face.get("swh", 0), swm=face.get("swm", 0), sws=face.get("sws", 0.0),
-                day=face.get("day", 8), bright=face.get("bright", True)).convert("RGBA")
+                day=face.get("day", 8), bright=face.get("bright", True),
+                blp=face.get("blp", "87%"), ssc=face.get("ssc", "6420"),
+                wtd=face.get("wtd", "12°C")).convert("RGBA")
     smask = Image.new("L", (face_px, face_px), 0)
     ImageDraw.Draw(smask).ellipse([0, 0, face_px - 1, face_px - 1], fill=255)
     smask = smask.filter(ImageFilter.GaussianBlur(1.2))
@@ -142,10 +144,17 @@ def compose(face, size=1400, screen_frac=0.855, label=None):
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "/tmp/wm/mock.png"
     states = [
-        (dict(hh=10, mm=9, ss=41, day=25, swh=0, swm=18, sws=0.0), "10:09  ·  25  ·  chrono 18 min"),
-        (dict(hh=22, mm=47, ss=12, day=25, swh=1, swm=42, sws=0.0), "22:47  ·  25  ·  chrono 1 h 42 min"),
-        (dict(hh=3, mm=8, ss=3, day=3, swh=0, swm=7, sws=0.0), "03:08  ·  3  ·  chrono 7 min"),
+        (dict(hh=10, mm=9, ss=41, day=25, swh=0, swm=18, sws=0.0, blp="80%", ssc="4315"),
+         "10:09  ·  25  ·  chrono 18 min"),
+        (dict(hh=22, mm=47, ss=12, day=25, swh=1, swm=42, sws=0.0, blp="64%", ssc="9870"),
+         "22:47  ·  25  ·  chrono 1 h 42 min"),
+        (dict(hh=3, mm=8, ss=3, day=3, swh=0, swm=7, sws=0.0, blp="52%", ssc="1204", wtd="7°C"),
+         "03:08  ·  3  ·  chrono 7 min"),
     ]
+    hero = compose(states[0][0], size=1500, label=states[0][1])
+    hero.convert("RGB").save(out, quality=94)
+    print("wrote", out, hero.size)
+
     shots = [compose(f, size=1000, label=lab) for f, lab in states]
     pad = 26
     tw = sum(s.width for s in shots) + pad * (len(shots) + 1)
@@ -155,8 +164,9 @@ def main():
     for s in shots:
         strip.alpha_composite(s, (x, pad + (th - pad * 2 - s.height) // 2))
         x += s.width + pad
-    strip.convert("RGB").save(out, quality=94)
-    print("wrote", out, strip.size)
+    strip_out = os.path.join(os.path.dirname(out), "times.jpg")
+    strip.convert("RGB").save(strip_out, quality=94)
+    print("wrote", strip_out, strip.size)
 
 
 if __name__ == "__main__":

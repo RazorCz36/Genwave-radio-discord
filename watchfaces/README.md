@@ -72,6 +72,10 @@ matches its declaration.
 The same reason killed `opacity="{abright} and 100 or 80"` on hands and date — this build
 resolves the expression to nothing and hides the layer, so all opacities are plain `100`.
 
+`mockup.jpg` is a front-on render of the packaged face in a drawn case; `times.jpg` shows
+the same package at three different times and dates (the hands, the chrono sweep and the
+date all come from the live tags, nothing is baked in).
+
 Swapping a readout is one edit in `build_watch.py` (`READOUTS`): e.g. `{pblp}` for the
 phone battery, `{stsc}` for the step target, `{wct}` for the weather description.
 
